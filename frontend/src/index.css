@@ -1,0 +1,24 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --color-pesantren-primary: #14532D;
+  --color-pesantren-emerald: #10B981;
+  --color-pesantren-gold: #D4AF37;
+  --color-pesantren-light: #F0FDF4;
+  --font-sans: "Poppins", "Inter", sans-serif;
+  --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+@layer base {
+  body {
+    @apply bg-pesantren-light text-gray-800 font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-soft rounded-2xl;
+  }
+}
