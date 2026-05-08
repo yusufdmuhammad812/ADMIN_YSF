@@ -33,27 +33,27 @@ const ScanPage = () => {
               setIsScanning(false);
               setCameraActive(false);
               await html5QrCode.stop();
-              
+
               const baseUrl = `http://${window.location.hostname}:3001`;
               const response = await fetch(`${baseUrl}/api/scan`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ qr_code: decodedText })
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ qr_code: decodedText })
               });
 
               const data = await response.json();
 
               if (!response.ok) {
-                  setError(data.error || "Gagal absen");
-                  setTimeout(() => { setError(null); setIsScanning(true); }, 3000);
+                setError(data.error || "Gagal absen");
+                setTimeout(() => { setError(null); setIsScanning(true); }, 3000);
               } else {
-                  setScanResult({
-                      name: data.student.name,
-                      nisn: data.student.nisn,
-                      class: data.student.class,
-                      time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
-                  });
-                  setTimeout(() => { setScanResult(null); setIsScanning(true); }, 5000);
+                setScanResult({
+                  name: data.student.name,
+                  nisn: data.student.nisn,
+                  class: data.student.class,
+                  time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                });
+                setTimeout(() => { setScanResult(null); setIsScanning(true); }, 5000);
               }
             } catch (err) {
               console.error("Scan processing error:", err);
@@ -61,7 +61,7 @@ const ScanPage = () => {
               setTimeout(() => { setError(null); setIsScanning(true); }, 3000);
             }
           },
-          () => {} // On success but no match yet
+          () => { } // On success but no match yet
         );
         setCameraActive(true);
       } catch (err) {
@@ -86,10 +86,10 @@ const ScanPage = () => {
     <div className="min-h-screen islamic-pattern flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Decor */}
       <div className="absolute inset-0 pointer-events-none">
-        <img 
-          src="/pesantren_hero.png" 
-          alt="Decor" 
-          className="w-full h-full object-cover opacity-10" 
+        <img
+          src="/pesantren_hero.png"
+          alt="Decor"
+          className="w-full h-full object-cover opacity-10"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-pesantren-light/30 via-transparent to-pesantren-light"></div>
       </div>
@@ -113,7 +113,7 @@ const ScanPage = () => {
         </motion.div>
 
         {/* Scanner Card */}
-        <motion.div 
+        <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1 }}
@@ -127,17 +127,17 @@ const ScanPage = () => {
           <div className="relative p-6 bg-gray-50 flex justify-center items-center min-h-[300px]">
             <div className={`w-full max-w-[280px] aspect-square relative ${error ? 'opacity-20 grayscale' : 'opacity-100'}`}>
               <div id="reader" className="w-full h-full rounded-2xl overflow-hidden shadow-inner border-2 border-white bg-black"></div>
-              
+
               {/* Overlay Overlay */}
               {isScanning && !scanResult && (
                 <div className="absolute inset-0 pointer-events-none flex justify-center items-center z-10">
                   {/* Laser Line */}
-                  <motion.div 
+                  <motion.div
                     animate={{ y: ["-40%", "40%"] }}
                     transition={{ repeat: Infinity, duration: 2.5, ease: "linear" }}
                     className="w-4/5 h-0.5 bg-pesantren-emerald rounded-full shadow-[0_0_15px_rgba(16,185,129,1)]"
                   />
-                  
+
                   {/* Corners */}
                   <div className="absolute top-4 left-4 w-10 h-10 border-t-4 border-l-4 border-white rounded-tl-xl"></div>
                   <div className="absolute top-4 right-4 w-10 h-10 border-t-4 border-r-4 border-white rounded-tr-xl"></div>
@@ -149,15 +149,15 @@ const ScanPage = () => {
               {/* Status Camera Off */}
               {!cameraActive && isScanning && !error && (
                 <div className="absolute inset-0 flex flex-col justify-center items-center text-white/50 bg-black/40 backdrop-blur-sm rounded-2xl">
-                   <div className="animate-spin w-8 h-8 border-4 border-white/20 border-t-white rounded-full mb-2"></div>
-                   <p className="text-[10px] font-bold uppercase tracking-widest">Memulai Kamera...</p>
+                  <div className="animate-spin w-8 h-8 border-4 border-white/20 border-t-white rounded-full mb-2"></div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest">Memulai Kamera...</p>
                 </div>
               )}
             </div>
 
             <AnimatePresence>
               {error && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   className="absolute inset-0 flex flex-col justify-center items-center text-center text-red-500 bg-white/90 backdrop-blur-sm p-6 rounded-2xl z-20"
@@ -174,13 +174,13 @@ const ScanPage = () => {
         {/* Results Modal */}
         <AnimatePresence>
           {scanResult && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-pesantren-primary/40 backdrop-blur-md"
             >
-              <motion.div 
+              <motion.div
                 initial={{ scale: 0.8, y: 20 }}
                 animate={{ scale: 1, y: 0 }}
                 className="bg-white rounded-[2rem] shadow-2xl p-8 max-w-sm w-full text-center"
@@ -216,7 +216,7 @@ const ScanPage = () => {
           <Link to="/cek" className="inline-flex items-center gap-2 bg-white/50 backdrop-blur-sm border border-pesantren-primary/10 px-4 py-2 rounded-full text-pesantren-primary/70 hover:text-pesantren-primary text-xs font-bold transition-all shadow-sm">
             <Search className="w-3.5 h-3.5" /> Wali Murid? Cek Kehadiran Di Sini
           </Link>
-          
+
           <div className="bg-white p-3 rounded-2xl shadow-lg border border-gray-100 flex flex-col items-center gap-2">
             <QRCodeSVG value={window.location.href} size={80} />
             <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Scan untuk Buka di HP</p>

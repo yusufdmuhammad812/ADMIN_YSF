@@ -3,18 +3,24 @@
 @import "tailwindcss";
 
 @theme {
+  --color-admin-sidebar: #2D4696;
+  --color-admin-sidebar-hover: #3D5BB5;
+  --color-admin-bg: #F4F7FE;
+  --color-admin-primary: #1B31BB;
+  --color-admin-card: #FFFFFF;
   --color-pesantren-primary: #14532D;
   --color-pesantren-emerald: #10B981;
   --color-pesantren-gold: #D4AF37;
   --color-pesantren-light: #F0FDF4;
   --font-sans: "Poppins", "Inter", sans-serif;
   --shadow-soft: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.04);
 }
 
 @layer base {
   body {
-    background-color: var(--color-pesantren-light);
-    color: #1f2937;
+    background-color: var(--color-admin-bg);
+    color: #2B3674;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -22,10 +28,16 @@
 }
 
 @layer utilities {
+  .admin-card {
+    background-color: var(--color-admin-card);
+    border-radius: 1.25rem;
+    box-shadow: var(--shadow-card);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+  }
   .glass-card {
     background-color: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(12px);
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
     border-radius: 2.5rem;
     border: 1px solid rgba(255, 255, 255, 0.5);
   }

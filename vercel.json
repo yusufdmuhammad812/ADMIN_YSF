@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "name": "e-absensi-hidayatut-tholibin",
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/admin",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/login",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "frontend/$1"
+    }
+  ]
+}
