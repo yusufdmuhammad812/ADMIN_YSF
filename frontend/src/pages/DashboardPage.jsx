@@ -9,7 +9,12 @@ import {
   RefreshCw,
   ArrowRight,
   Database,
-  Wifi
+  Wifi,
+  MessageCircle,
+  Smartphone,
+  CheckCircle2,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -36,6 +41,7 @@ const DashboardPage = () => {
   const [attendances, setAttendances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [waStatus, setWaStatus] = useState({ status: 'loading', isConnected: false, hasQR: false, phoneInfo: null });
 
   const loadData = useCallback(async () => {
     try {
@@ -56,11 +62,27 @@ const DashboardPage = () => {
     }
   }, []);
 
+  // Polling status WhatsApp setiap 10 detik
+  const fetchWaStatus = useCallback(async () => {
+    try {
+      const baseUrl = `http://${window.location.hostname}:3001`;
+      const res = await fetch(`${baseUrl}/api/wa/status`);
+      if (res.ok) {
+        const data = await res.json();
+        setWaStatus(data);
+      }
+    } catch {
+      setWaStatus({ status: 'disconnected', isConnected: false, hasQR: false, phoneInfo: null });
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
+    fetchWaStatus();
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, [loadData]);
+    const waTimer = setInterval(fetchWaStatus, 10000);
+    return () => { clearInterval(timer); clearInterval(waTimer); };
+  }, [loadData, fetchWaStatus]);
 
   const formatDate = (date) => {
     return date.toLocaleDateString('id-ID', { 
@@ -190,33 +212,97 @@ const DashboardPage = () => {
             </div>
           </div>
 
-          {/* System Info Card */}
+          {/* System Info + WA Status Cards */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="admin-card p-8 bg-[#2D4696] text-white relative overflow-hidden">
+            {/* Info Sistem */}
+            <div className="admin-card p-6 bg-[#2D4696] text-white relative overflow-hidden">
               <div className="relative z-10">
-                <h3 className="text-lg font-bold mb-4">Informasi Sistem</h3>
-                <p className="text-white/70 text-xs leading-relaxed mb-8">
-                  Pastikan scanner QR Code terhubung dengan benar ke port USB untuk proses absensi yang lancar.
-                </p>
-                
-                <div className="space-y-4">
+                <h3 className="text-sm font-bold mb-3">Informasi Sistem</h3>
+                <div className="space-y-3">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-white/60">Database</span>
                     <span className="font-bold flex items-center gap-2">
-                      PostgreSQL (Local) <Database className="w-3 h-3" />
+                      PostgreSQL <Database className="w-3 h-3" />
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/60">Status</span>
+                    <span className="text-white/60">Backend</span>
                     <span className="font-bold flex items-center gap-2">
                       <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                      Terhubung <Wifi className="w-3 h-3" />
+                      Online <Wifi className="w-3 h-3" />
                     </span>
                   </div>
                 </div>
               </div>
-              {/* Decorative circles */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
+              <div className="absolute top-0 right-0 w-28 h-28 bg-white/5 rounded-full -mr-14 -mt-14" />
+            </div>
+
+            {/* Status WhatsApp */}
+            <div className="admin-card p-6 relative overflow-hidden">
+              <div className="flex items-center gap-2 mb-4">
+                <div className={`p-2 rounded-lg ${
+                  waStatus.isConnected ? 'bg-emerald-50 text-emerald-600' :
+                  waStatus.hasQR ? 'bg-amber-50 text-amber-500' :
+                  waStatus.status === 'connecting' ? 'bg-blue-50 text-blue-500' :
+                  waStatus.status === 'loading' ? 'bg-gray-50 text-gray-400' :
+                  'bg-red-50 text-red-400'
+                }`}>
+                  <MessageCircle className="w-4 h-4" />
+                </div>
+                <h3 className="text-sm font-bold text-[#2B3674]">Notifikasi WhatsApp</h3>
+              </div>
+
+              {/* Indikator Status */}
+              <div className={`flex items-center gap-3 p-3 rounded-xl mb-3 ${
+                waStatus.isConnected ? 'bg-emerald-50 border border-emerald-100' :
+                waStatus.hasQR ? 'bg-amber-50 border border-amber-100' :
+                waStatus.status === 'connecting' ? 'bg-blue-50 border border-blue-100' :
+                waStatus.status === 'loading' ? 'bg-gray-50 border border-gray-100' :
+                'bg-red-50 border border-red-100'
+              }`}>
+                {waStatus.isConnected && <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />}
+                {waStatus.hasQR && <Smartphone className="w-5 h-5 text-amber-500 flex-shrink-0 animate-pulse" />}
+                {waStatus.status === 'connecting' && <Loader2 className="w-5 h-5 text-blue-500 flex-shrink-0 animate-spin" />}
+                {waStatus.status === 'loading' && <Loader2 className="w-5 h-5 text-gray-400 flex-shrink-0 animate-spin" />}
+                {(waStatus.status === 'disconnected' && !waStatus.hasQR) && <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />}
+                
+                <div>
+                  <p className={`text-xs font-bold ${
+                    waStatus.isConnected ? 'text-emerald-700' :
+                    waStatus.hasQR ? 'text-amber-700' :
+                    waStatus.status === 'connecting' ? 'text-blue-700' :
+                    waStatus.status === 'loading' ? 'text-gray-500' :
+                    'text-red-600'
+                  }`}>
+                    {waStatus.isConnected && '✅ Terhubung & Aktif'}
+                    {waStatus.hasQR && '📱 Menunggu Scan QR'}
+                    {waStatus.status === 'connecting' && '🔄 Menghubungkan...'}
+                    {waStatus.status === 'loading' && 'Memuat status...'}
+                    {(waStatus.status === 'disconnected' && !waStatus.hasQR && !waStatus.isConnected) && '❌ Terputus'}
+                  </p>
+                  {waStatus.isConnected && waStatus.phoneInfo && (
+                    <p className="text-[10px] text-emerald-600 mt-0.5">{waStatus.phoneInfo.name || 'WhatsApp Terhubung'}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Instruksi jika belum login */}
+              {(waStatus.hasQR || waStatus.status === 'disconnected') && !waStatus.isConnected && (
+                <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                  <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Cara Aktivasi</p>
+                  <ol className="text-[10px] text-amber-700 space-y-1 list-decimal list-inside">
+                    <li>Buka terminal server backend</li>
+                    <li>Akan muncul QR Code</li>
+                    <li>Buka WhatsApp di HP</li>
+                    <li>Titik 3 → Perangkat Tertaut</li>
+                    <li>Scan QR Code tersebut</li>
+                  </ol>
+                </div>
+              )}
+
+              {waStatus.isConnected && (
+                <p className="text-[10px] text-gray-400 text-center">Notifikasi otomatis aktif ke semua wali murid</p>
+              )}
             </div>
           </div>
         </div>

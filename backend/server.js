@@ -4,6 +4,12 @@ const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
+const {
+    connectWhatsApp,
+    sendWhatsAppMessage,
+    buildAttendanceMessage,
+    getWhatsAppStatus,
+} = require('./whatsapp');
 
 dotenv.config();
 
@@ -64,6 +70,27 @@ app.post('/api/scan', async (req, res) => {
                 studentId: student.id
             }
         });
+
+        // ── Kirim notifikasi WhatsApp ke orang tua ──────────────────────
+        const waEnabled = process.env.WA_ENABLED !== 'false';
+        if (waEnabled && student.parent_phone) {
+            const pesan = buildAttendanceMessage(
+                student.name,
+                student.class,
+                student.nisn
+            );
+            // Fire-and-forget: jangan block response meski WA gagal
+            sendWhatsAppMessage(student.parent_phone, pesan)
+                .then(result => {
+                    if (result.success) {
+                        console.log(`📱 Notif WA terkirim ke ortu ${student.name} (${student.parent_phone})`);
+                    } else {
+                        console.warn(`⚠️  Notif WA gagal untuk ${student.name}: ${result.reason}`);
+                    }
+                })
+                .catch(err => console.error('WA send error:', err));
+        }
+        // ────────────────────────────────────────────────────────────────
 
         return res.json({
             success: true,
@@ -360,6 +387,11 @@ app.put('/api/dashboard/teachers/:id', async (req, res) => {
     }
 });
 
+// Endpoint: Status Koneksi WhatsApp
+app.get('/api/wa/status', (req, res) => {
+    res.json(getWhatsAppStatus());
+});
+
 // Fungsi Backup Data Otomatis
 const backupData = async () => {
     try {
@@ -376,4 +408,14 @@ const backupData = async () => {
 app.listen(port, async () => {
     console.log(`🚀 Backend API berjalan di http://localhost:${port}`);
     await backupData();
+
+    // ── Inisialisasi Layanan WhatsApp ──────────────────────────────────
+    const waEnabled = process.env.WA_ENABLED !== 'false';
+    if (waEnabled) {
+        console.log('📱 Memulai layanan notifikasi WhatsApp...');
+        connectWhatsApp();
+    } else {
+        console.log('📵 Notifikasi WhatsApp dinonaktifkan (WA_ENABLED=false di .env)');
+    }
+    // ──────────────────────────────────────────────────────────────────
 });
