@@ -15,6 +15,7 @@ const ReportsPage = () => {
   const [reportType, setReportType] = useState('harian'); // harian, bulanan
   const [category, setCategory] = useState('siswa'); // siswa, guru
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedClass, setSelectedClass] = useState('Semua Kelas');
 
   const loadData = useCallback(async () => {
     try {
@@ -33,6 +34,12 @@ const ReportsPage = () => {
     loadData();
   }, [loadData]);
 
+  const uniqueClasses = ['Semua Kelas', ...new Set(attendances.map(a => a.class).filter(Boolean))].sort();
+
+  const handleExportPDF = () => {
+    window.print();
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -43,18 +50,25 @@ const ReportsPage = () => {
             <p className="text-gray-400 text-sm mt-1">Lihat dan cetak laporan absensi berkala</p>
           </div>
           
-          <div className="flex items-center gap-3">
-             <div className="flex items-center gap-2 bg-white px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-100 shadow-sm cursor-pointer hover:bg-gray-50 transition-all">
-               <Filter className="w-4 h-4 text-gray-400" /> Semua Kelas <ChevronDown className="w-4 h-4 text-gray-400" />
-             </div>
-            <button className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-emerald-900/20 hover:bg-emerald-600 transition-all">
+          <div className="flex items-center gap-3 print:hidden">
+             <select 
+               value={selectedClass}
+               onChange={(e) => setSelectedClass(e.target.value)}
+               className="bg-white px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-100 shadow-sm cursor-pointer hover:bg-gray-50 transition-all outline-none text-gray-600 appearance-none pr-8 relative"
+               style={{ backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right .7em top 50%', backgroundSize: '.65em auto' }}
+             >
+               {uniqueClasses.map(cls => (
+                 <option key={cls} value={cls}>{cls}</option>
+               ))}
+             </select>
+            <button onClick={handleExportPDF} className="flex items-center gap-2 bg-emerald-500 text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-emerald-900/20 hover:bg-emerald-600 transition-all">
               <Download className="w-4 h-4" /> Export PDF
             </button>
           </div>
         </div>
 
         {/* Filter Card */}
-        <div className="admin-card p-8">
+        <div className="admin-card p-8 print:hidden">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {/* Jenis Laporan */}
             <div>
@@ -111,8 +125,10 @@ const ReportsPage = () => {
         </div>
 
         {/* Table Preview Card */}
-        <div className="admin-card p-8">
-          <h3 className="text-lg font-bold text-[#2B3674] mb-8">Pratinjau Laporan Harian</h3>
+        <div className="admin-card p-8 print:shadow-none print:border-none print:p-0">
+          <h3 className="text-lg font-bold text-[#2B3674] mb-8 print:text-black">
+            Laporan Harian - {selectedClass} - {new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </h3>
           
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -143,8 +159,9 @@ const ReportsPage = () => {
                     const dateStr = new Date(item.timestamp).toISOString().split('T')[0];
                     const key = `${item.nisn}-${dateStr}`;
                     
-                    // Filter based on selectedDate if needed, but the API already filters or we want to filter here
-                    if (dateStr === selectedDate && !seenStudents.has(key)) {
+                    const matchesClass = selectedClass === 'Semua Kelas' || item.class === selectedClass;
+                    
+                    if (dateStr === selectedDate && matchesClass && !seenStudents.has(key)) {
                       uniqueAttendances.push(item);
                       seenStudents.add(key);
                     }

@@ -7,15 +7,33 @@ import {
   Search,
   MoreVertical,
   Trash2,
-  Printer
+  Printer,
+  Contact,
+  Edit
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 
 const StudentsPage = () => {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // Add Student State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newStudent, setNewStudent] = useState({
+    name: '',
+    nisn: '',
+    className: '',
+    parentName: '',
+    parentPhone: ''
+  });
+
+  // Edit Student State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editStudent, setEditStudent] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -40,6 +58,91 @@ const StudentsPage = () => {
     s.class.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleAddStudent = async (e) => {
+    e.preventDefault();
+    try {
+      const baseUrl = `http://${window.location.hostname}:3001`;
+      const res = await fetch(`${baseUrl}/api/dashboard/students`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newStudent),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert("Siswa berhasil ditambahkan!");
+        setIsAddModalOpen(false);
+        setNewStudent({ name: '', nisn: '', className: '', parentName: '', parentPhone: '' });
+        loadData(); // Refresh list
+      } else {
+        alert(data.error || "Gagal menambah siswa.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan sistem saat menyimpan data.");
+    }
+  };
+
+  const handleDeleteStudent = async (id, name) => {
+    if (!window.confirm(`Yakin ingin menghapus data ${name}? Semua riwayat absensinya juga akan ikut terhapus.`)) return;
+    try {
+      const baseUrl = `http://${window.location.hostname}:3001`;
+      const res = await fetch(`${baseUrl}/api/dashboard/students/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        loadData();
+      } else {
+        alert("Gagal menghapus siswa.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saat menghapus siswa.");
+    }
+  };
+
+  const openEditModal = (student) => {
+    setEditStudent({
+      id: student.id,
+      name: student.name,
+      nisn: student.nisn,
+      className: student.class,
+      parentName: student.parent_name || '',
+      parentPhone: student.parent_phone || ''
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateStudent = async (e) => {
+    e.preventDefault();
+    try {
+      const baseUrl = `http://${window.location.hostname}:3001`;
+      const res = await fetch(`${baseUrl}/api/dashboard/students/${editStudent.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editStudent.name,
+          nisn: editStudent.nisn,
+          class: editStudent.className,
+          parent_name: editStudent.parentName,
+          parent_phone: editStudent.parentPhone
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setIsEditModalOpen(false);
+        setEditStudent(null);
+        loadData();
+      } else {
+        alert(data.error || "Gagal mengupdate siswa.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Terjadi kesalahan sistem saat update data.");
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -62,7 +165,10 @@ const StudentsPage = () => {
               <Upload className="w-4 h-4" /> Upload Excel
               <input type="file" className="hidden" />
             </label>
-            <button className="flex items-center gap-2 bg-[#1B31BB] text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all">
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 bg-[#1B31BB] text-white px-6 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-900/20 hover:bg-blue-800 transition-all"
+            >
               <Plus className="w-4 h-4" /> Tambah Siswa
             </button>
           </div>
@@ -124,14 +230,14 @@ const StudentsPage = () => {
                       </td>
                       <td className="py-4 px-2 text-right">
                         <div className="flex justify-end items-center gap-2">
-                          <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
+                          <button onClick={() => navigate('/admin/print-qr')} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Cetak QR">
                             <Printer className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
-                            <Trash2 className="w-4 h-4" />
+                          <button onClick={() => openEditModal(student)} className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Edit Data">
+                            <Edit className="w-4 h-4" />
                           </button>
-                          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg">
-                            <MoreVertical className="w-4 h-4" />
+                          <button onClick={() => handleDeleteStudent(student.id, student.name)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Hapus Data">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </td>
@@ -143,6 +249,116 @@ const StudentsPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Modal Tambah Siswa Manual */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-white/20">
+            <div className="px-8 py-5 bg-[#1e293b] text-white flex justify-between items-center">
+              <div>
+                <h2 className="font-bold text-lg">Tambah Data Siswa</h2>
+                <p className="text-[10px] text-gray-300 font-medium">Input data siswa secara manual</p>
+              </div>
+              <button onClick={() => setIsAddModalOpen(false)} className="text-white/60 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleAddStudent} className="p-8 space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Nama Lengkap Siswa</label>
+                <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={newStudent.name} onChange={e => setNewStudent({...newStudent, name: e.target.value})} placeholder="Misal: Ahmad Syafiq" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">NIS / NISN</label>
+                  <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={newStudent.nisn} onChange={e => setNewStudent({...newStudent, nisn: e.target.value})} placeholder="Misal: 00928374" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Kelas</label>
+                  <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={newStudent.className} onChange={e => setNewStudent({...newStudent, className: e.target.value})} placeholder="Misal: 7A" />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-[11px] font-bold text-emerald-600 mb-4 uppercase tracking-widest flex items-center gap-2">
+                  <Contact className="w-3 h-3" /> Data Orang Tua (Untuk Notifikasi WA)
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Nama Wali</label>
+                    <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={newStudent.parentName} onChange={e => setNewStudent({...newStudent, parentName: e.target.value})} placeholder="Misal: Bpk. Sugeng" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">No. WhatsApp</label>
+                    <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={newStudent.parentPhone} onChange={e => setNewStudent({...newStudent, parentPhone: e.target.value})} placeholder="Misal: 081234567890" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-6 mt-2">
+                <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all">Batal</button>
+                <button type="submit" className="flex-1 px-4 py-3 bg-[#1B31BB] text-white rounded-xl text-sm font-bold hover:bg-blue-800 shadow-lg shadow-blue-900/20 transition-all">Simpan Data Siswa</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Siswa Manual */}
+      {isEditModalOpen && editStudent && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-white/20">
+            <div className="px-8 py-5 bg-[#1B31BB] text-white flex justify-between items-center">
+              <div>
+                <h2 className="font-bold text-lg">Edit Data Siswa</h2>
+                <p className="text-[10px] text-blue-200 font-medium">Perbarui informasi siswa</p>
+              </div>
+              <button onClick={() => { setIsEditModalOpen(false); setEditStudent(null); }} className="text-white/60 hover:text-white p-2 rounded-full hover:bg-white/10 transition-colors">
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleUpdateStudent} className="p-8 space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Nama Lengkap Siswa</label>
+                <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={editStudent.name} onChange={e => setEditStudent({...editStudent, name: e.target.value})} placeholder="Misal: Ahmad Syafiq" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">NIS / NISN</label>
+                  <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={editStudent.nisn} onChange={e => setEditStudent({...editStudent, nisn: e.target.value})} placeholder="Misal: 00928374" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Kelas</label>
+                  <input required type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={editStudent.className} onChange={e => setEditStudent({...editStudent, className: e.target.value})} placeholder="Misal: 7A" />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-[11px] font-bold text-emerald-600 mb-4 uppercase tracking-widest flex items-center gap-2">
+                  <Contact className="w-3 h-3" /> Data Orang Tua (Untuk Notifikasi WA)
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">Nama Wali</label>
+                    <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={editStudent.parentName} onChange={e => setEditStudent({...editStudent, parentName: e.target.value})} placeholder="Misal: Bpk. Sugeng" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">No. WhatsApp</label>
+                    <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all" value={editStudent.parentPhone} onChange={e => setEditStudent({...editStudent, parentPhone: e.target.value})} placeholder="Misal: 081234567890" />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-3 pt-6 mt-2">
+                <button type="button" onClick={() => { setIsEditModalOpen(false); setEditStudent(null); }} className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-200 transition-all">Batal</button>
+                <button type="submit" className="flex-1 px-4 py-3 bg-emerald-500 text-white rounded-xl text-sm font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-500/20 transition-all">Simpan Perubahan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

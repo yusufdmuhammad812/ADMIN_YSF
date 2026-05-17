@@ -3,8 +3,8 @@
 @import "tailwindcss";
 
 @theme {
-  --color-admin-sidebar: #2D4696;
-  --color-admin-sidebar-hover: #3D5BB5;
+  --color-admin-sidebar: #374151;
+  --color-admin-sidebar-hover: #4B5563;
   --color-admin-bg: #F4F7FE;
   --color-admin-primary: #1B31BB;
   --color-admin-card: #FFFFFF;
@@ -76,4 +76,18 @@
 
 #reader button:hover {
   background-color: var(--color-pesantren-emerald) !important;
+}
+
+/* Print Styles for PDF Export */
+@media print {
+  aside {
+    display: none !important;
+  }
+  main {
+    margin-left: 0 !important;
+    padding: 0 !important;
+  }
+  body {
+    background-color: white !important;
+  }
 }

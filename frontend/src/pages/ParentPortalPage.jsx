@@ -12,7 +12,7 @@ const ParentPortalPage = () => {
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!nisn) return;
-    
+
     setLoading(true);
     setError('');
     setResults([]);
@@ -37,7 +37,7 @@ const ParentPortalPage = () => {
   return (
     <div className="min-h-screen islamic-pattern p-4 font-sans flex flex-col items-center relative overflow-hidden">
       {/* Background Hero Image */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 0.1 }}
         className="absolute inset-0 -z-10"
@@ -117,7 +117,7 @@ const ParentPortalPage = () => {
                       <p className="text-xs text-gray-500 uppercase tracking-wider">Kelas: {result.class}</p>
                     </div>
                   </div>
-                  
+
                   <div className="p-6">
                     <div className="flex flex-col items-center justify-center py-2">
                       {result.attendance ? (

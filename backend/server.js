@@ -387,6 +387,35 @@ app.put('/api/dashboard/teachers/:id', async (req, res) => {
     }
 });
 
+// Endpoint import guru dari excel
+app.post('/api/dashboard/teachers/import', async (req, res) => {
+    const { teachers } = req.body;
+    
+    if (!teachers || !Array.isArray(teachers)) {
+        return res.status(400).json({ error: "Data guru tidak valid" });
+    }
+
+    try {
+        const dataToInsert = teachers.map(t => ({
+            name: t.name,
+            nip: String(t.nip),
+            role: t.role,
+            qr_code: String(t.nip)
+        }));
+
+        // Insert data ke database, skip yang duplikat (NIP sama)
+        const result = await prisma.teacher.createMany({
+            data: dataToInsert,
+            skipDuplicates: true
+        });
+
+        res.json({ success: true, count: result.count });
+    } catch (error) {
+        console.error("Gagal import guru:", error);
+        res.status(500).json({ error: "Gagal mengimport data guru." });
+    }
+});
+
 // Endpoint: Status Koneksi WhatsApp
 app.get('/api/wa/status', (req, res) => {
     res.json(getWhatsAppStatus());
