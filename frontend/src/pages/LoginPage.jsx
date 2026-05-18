@@ -36,11 +36,11 @@ const LoginPage = () => {
         className="bg-white/95 backdrop-blur-xl rounded-[2rem] border border-white max-w-md w-full p-8 relative z-10 shadow-[0_20px_60px_-15px_rgba(20,83,45,0.2)]"
       >
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-3">
-            <img src="/logo.png" alt="Logo Pesantren" className="w-28 h-28 object-contain mix-blend-multiply transition-transform duration-500 hover:scale-105" />
+          <div className="flex justify-center mb-1">
+            <img src="/logo.png" alt="Logo Pesantren" className="w-40 h-40 object-contain mix-blend-multiply transition-transform duration-500 hover:scale-105" />
           </div>
-          <h2 className="text-3xl font-black text-pesantren-primary tracking-tight">ADMIN LOGIN</h2>
-          <p className="text-[10px] font-bold text-pesantren-emerald tracking-[0.3em] uppercase mt-1">Hidayatut Tholibin</p>
+          <h2 className="text-3xl font-black text-pesantren-primary tracking-tight">MASUK ADMIN</h2>
+          <p className="text-[10px] font-bold text-pesantren-emerald tracking-[0.3em] uppercase mt-1">SMP PESANTREN HIDAYATUT THOLIBIN</p>
           <div className="h-1 w-12 bg-pesantren-gold mx-auto rounded-full mt-4"></div>
         </div>
 
@@ -91,7 +91,7 @@ const LoginPage = () => {
             type="submit"
             className="w-full bg-pesantren-primary hover:bg-pesantren-emerald text-white py-4 rounded-2xl font-bold shadow-xl shadow-pesantren-primary/30 transition-all mt-6 active:scale-95"
           >
-            Lanjut ke Dashboard
+            MASUK
           </button>
         </form>
 
