@@ -195,7 +195,11 @@ const StudentsPage = () => {
         }
       } catch (error) {
         console.error(error);
-        alert("Terjadi kesalahan saat memproses file Excel. Pastikan format sesuai template.");
+        if (error.message.includes('fetch') || error.name === 'TypeError') {
+          alert("Gagal terhubung ke server backend! Pastikan server backend lokal Anda sudah dinyalakan di port 3001.");
+        } else {
+          alert("Terjadi kesalahan saat memproses file Excel. Pastikan format sesuai template.");
+        }
       }
     };
     reader.readAsBinaryString(file);
