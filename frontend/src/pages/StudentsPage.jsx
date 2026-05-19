@@ -144,6 +144,64 @@ const StudentsPage = () => {
     }
   };
 
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+
+        if (data.length === 0) {
+          alert("File Excel kosong atau format tidak sesuai.");
+          return;
+        }
+
+        const mappedStudents = data.map(item => {
+          const name = item.name || item.Name || item.nama || item.Nama || '';
+          const nisn = String(item.nisn || item.Nisn || item.NISN || item.nis || item.Nis || item.NIS || '');
+          const className = String(item.class || item.Class || item.kelas || item.Kelas || item.className || '');
+          const parentName = item.parentName || item.ParentName || item.nama_ortu || item.Nama_Ortu || item.wali || item.Wali || '';
+          const parentPhone = String(item.parentPhone || item.ParentPhone || item.no_wa || item.No_Wa || item.parent_phone || '');
+          
+          return { name, nisn, className, parentName, parentPhone };
+        });
+
+        const validStudents = mappedStudents.filter(s => s.name && s.nisn);
+
+        if (validStudents.length === 0) {
+          alert("Tidak ada data siswa valid. Pastikan kolom Nama dan NISN terisi.");
+          return;
+        }
+
+        const baseUrl = getBaseUrl();
+        const res = await fetch(`${baseUrl}/api/dashboard/students/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ students: validStudents }),
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          alert(`Berhasil mengimport ${result.count} data siswa baru!`);
+          loadData();
+        } else {
+          alert(result.error || "Gagal mengimport data.");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("Terjadi kesalahan saat memproses file Excel. Pastikan format sesuai template.");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-8">
@@ -164,7 +222,7 @@ const StudentsPage = () => {
             </a>
             <label className="flex items-center gap-2 bg-white text-emerald-500 px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-100 shadow-sm cursor-pointer hover:bg-emerald-50 transition-all">
               <Upload className="w-4 h-4" /> Upload Excel
-              <input type="file" className="hidden" />
+              <input type="file" accept=".xlsx, .xls" className="hidden" onChange={handleFileUpload} />
             </label>
             <button 
               onClick={() => setIsAddModalOpen(true)}
