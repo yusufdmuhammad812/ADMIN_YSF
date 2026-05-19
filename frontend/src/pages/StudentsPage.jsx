@@ -167,7 +167,7 @@ const StudentsPage = () => {
           const nisn = String(item.nisn || item.Nisn || item.NISN || item.nis || item.Nis || item.NIS || '');
           const className = String(item.class || item.Class || item.kelas || item.Kelas || item.className || '');
           const parentName = item.parentName || item.ParentName || item.nama_ortu || item.Nama_Ortu || item.wali || item.Wali || '';
-          const parentPhone = String(item.parentPhone || item.ParentPhone || item.no_wa || item.No_Wa || item.parent_phone || '');
+          const parentPhone = String(item.parentPhone || item.ParentPhone || item.no_wa || item.No_Wa || item.No_WA || item.no_WA || item.parent_phone || '');
           
           return { name, nisn, className, parentName, parentPhone };
         });
