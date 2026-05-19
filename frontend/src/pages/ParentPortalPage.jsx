@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, UserCircle, Clock, Calendar, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Search, UserCircle, Clock, Calendar, CheckCircle, AlertCircle, ArrowLeft, Phone, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { getBaseUrl } from '../utils/api';
 
 const ParentPortalPage = () => {
-  const [nisn, setNisn] = useState('');
+  const [parentPhone, setParentPhone] = useState('');
+  const [studentName, setStudentName] = useState('');
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!nisn) return;
+    if (!parentPhone || !studentName) return;
 
     setLoading(true);
     setError('');
@@ -21,7 +22,11 @@ const ParentPortalPage = () => {
 
     try {
       const baseUrl = getBaseUrl();
-      const response = await fetch(`${baseUrl}/api/parent/check/${nisn}`);
+      const response = await fetch(`${baseUrl}/api/parent/check-secure`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parentPhone, studentName })
+      });
       const data = await response.json();
 
       if (response.ok) {
@@ -62,25 +67,41 @@ const ParentPortalPage = () => {
 
         {/* Search Card */}
         <div className="glass-card p-8 mb-8 shadow-2xl shadow-pesantren-primary/5">
-          <form onSubmit={handleSearch} className="flex flex-col gap-6">
+          <form onSubmit={handleSearch} className="flex flex-col gap-5">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Masukkan NISN atau Nama Santri</label>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">No. HP Orang Tua (WhatsApp)</label>
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Contoh: 12345 atau Ahmad Farhan"
-                  value={nisn}
-                  onChange={(e) => setNisn(e.target.value)}
-                  className="w-full px-5 py-4 pl-12 bg-gray-50 border-0 rounded-[1.5rem] focus:ring-2 focus:ring-pesantren-emerald outline-none transition-all font-medium text-sm"
+                  placeholder="Contoh: 083148100602"
+                  value={parentPhone}
+                  onChange={(e) => setParentPhone(e.target.value)}
+                  className="w-full px-5 py-4 pl-12 bg-gray-50 border-0 rounded-[1.5rem] focus:ring-2 focus:ring-pesantren-emerald outline-none transition-all font-medium text-sm text-[#2B3674]"
                   required
                 />
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-pesantren-primary/40" />
+                <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-pesantren-primary/40" />
               </div>
             </div>
+
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Nama Lengkap Siswa</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Masukkan nama lengkap anak Anda"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  className="w-full px-5 py-4 pl-12 bg-gray-50 border-0 rounded-[1.5rem] focus:ring-2 focus:ring-pesantren-emerald outline-none transition-all font-medium text-sm text-[#2B3674]"
+                  required
+                />
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-pesantren-primary/40" />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-pesantren-primary hover:bg-pesantren-emerald text-white py-4 rounded-[1.5rem] font-bold shadow-xl shadow-pesantren-primary/30 transition-all flex justify-center items-center gap-2 disabled:opacity-50 active:scale-95"
+              className="w-full bg-pesantren-primary hover:bg-pesantren-emerald text-white py-4 rounded-[1.5rem] font-bold shadow-xl shadow-pesantren-primary/30 transition-all flex justify-center items-center gap-2 disabled:opacity-50 active:scale-95 mt-2"
             >
               {loading ? 'Mencari...' : 'Periksa Kehadiran'}
             </button>

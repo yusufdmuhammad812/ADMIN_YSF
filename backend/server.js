@@ -301,6 +301,65 @@ app.get('/api/parent/check/:query', async (req, res) => {
     }
 });
 
+// Endpoint cek mandiri wali murid (Pakai Nomor HP Orang Tua dan Nama Siswa)
+app.post('/api/parent/check-secure', async (req, res) => {
+    const { parentPhone, studentName } = req.body;
+
+    if (!parentPhone || !studentName) {
+        return res.status(400).json({ error: "Nomor HP Orang Tua dan Nama Siswa wajib diisi." });
+    }
+
+    // Bersihkan nomor HP agar konsisten (misal hilangkan +, spasi, dll, atau ubah 08 ke 628)
+    let cleanPhone = parentPhone.replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('0')) {
+        cleanPhone = '62' + cleanPhone.slice(1);
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    try {
+        // Cari siswa yang nomor HP orang tuanya cocok DAN namanya mengandung input nama siswa
+        const students = await prisma.student.findMany({
+            where: {
+                name: { contains: studentName, mode: 'insensitive' },
+                OR: [
+                    { parent_phone: cleanPhone },
+                    { parent_phone: parentPhone },
+                    { parent_phone: { contains: cleanPhone } }
+                ]
+            },
+            include: {
+                attendances: {
+                    where: {
+                        timestamp: {
+                            gte: today
+                        }
+                    },
+                    orderBy: { timestamp: 'desc' },
+                    take: 1
+                }
+            }
+        });
+
+        if (students.length === 0) {
+            return res.status(404).json({ error: "Siswa tidak ditemukan. Pastikan No. HP Orang Tua dan Nama Siswa sudah sesuai dengan data sekolah." });
+        }
+
+        const results = students.map(s => ({
+            name: s.name,
+            class: s.class,
+            nisn: s.nisn,
+            attendance: s.attendances.length > 0 ? s.attendances[0] : null
+        }));
+
+        res.json(results);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Terjadi kesalahan server" });
+    }
+});
+
 // Endpoint data absensi lengkap
 app.get('/api/dashboard/attendances', async (req, res) => {
     try {
