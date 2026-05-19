@@ -171,7 +171,7 @@ function buildAttendanceMessage(studentName, studentClass, nisn) {
     }).replace('.', ':');
 
     return (
-        `🕌 *ABSENSI SANTRI*\n` +
+        `🕌 *ABSENSI SMP*\n` +
         `Pesantren Hidayatut Tholibin\n\n` +
         `✅ *${studentName}* telah hadir\n` +
         `📚 Kelas: *${studentClass}*\n` +

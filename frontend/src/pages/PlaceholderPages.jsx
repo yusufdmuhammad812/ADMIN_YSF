@@ -52,7 +52,7 @@ export const IdentityPage = () => (
             <img
               src="/logo.png"
               alt="Logo SMP Pesantren Hidayatut Tholibin"
-              className="relative w-40 h-40 object-contain drop-shadow-lg"
+              className="relative w-40 h-40 object-contain drop-shadow-lg mix-blend-multiply"
               onError={(e) => {
                 e.target.style.display = 'none';
                 e.target.nextSibling.style.display = 'flex';

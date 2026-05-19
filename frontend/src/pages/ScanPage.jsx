@@ -104,7 +104,7 @@ const ScanPage = () => {
           className="space-y-1 mb-6"
         >
           <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="Logo" className="w-32 h-32 sm:w-40 sm:h-40 object-contain" />
+            <img src="/logo.png" alt="Logo" className="w-32 h-32 sm:w-40 sm:h-40 object-contain mix-blend-multiply" />
           </div>
           <h1 className="text-3xl font-black text-pesantren-primary tracking-tight flex items-center justify-center gap-3">
             <QrCode className="w-8 h-8 text-pesantren-gold" />

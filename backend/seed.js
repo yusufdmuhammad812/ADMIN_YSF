@@ -89,6 +89,7 @@ async function main() {
         nip: t.nip,
         role: t.role,
         qr_code: t.nip,
+        parent_phone: '62895326243945', // Menggunakan nomor default
       },
     });
   }

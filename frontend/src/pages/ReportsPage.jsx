@@ -21,8 +21,10 @@ const ReportsPage = () => {
 
   const loadData = useCallback(async () => {
     try {
+      setIsLoading(true);
       const baseUrl = getBaseUrl();
-      const res = await fetch(`${baseUrl}/api/dashboard/attendances`);
+      const endpoint = category === 'guru' ? 'teacher-attendances' : 'attendances';
+      const res = await fetch(`${baseUrl}/api/dashboard/${endpoint}`);
       const data = await res.json();
       setAttendances(data);
     } catch (err) {
@@ -30,7 +32,7 @@ const ReportsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [category]);
 
   useEffect(() => {
     loadData();
@@ -159,7 +161,7 @@ const ReportsPage = () => {
 
                   sortedAttendances.forEach(item => {
                     const dateStr = new Date(item.timestamp).toISOString().split('T')[0];
-                    const key = `${item.nisn}-${dateStr}`;
+                    const key = `${item.nisn || item.nip}-${dateStr}`;
                     
                     const matchesClass = selectedClass === 'Semua Kelas' || item.class === selectedClass;
                     

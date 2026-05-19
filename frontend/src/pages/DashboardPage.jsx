@@ -158,7 +158,7 @@ const DashboardPage = () => {
           />
           <StatCard 
             title="GURU HADIR" 
-            value="0" 
+            value={stats.teachersPresentToday || 0} 
             icon={UserCheck} 
             color="text-emerald-500"
             decorColor="bg-emerald-500"
@@ -218,8 +218,12 @@ const DashboardPage = () => {
                           </div>
                         </td>
                         <td className="py-4 px-2">
-                          <span className="px-3 py-1 bg-blue-50 text-[10px] font-bold text-blue-500 rounded-full uppercase">
-                            SISWA
+                          <span className={`px-3 py-1 text-[10px] font-bold rounded-full uppercase ${
+                            item.type === 'GURU' 
+                              ? 'bg-emerald-50 text-emerald-500' 
+                              : 'bg-blue-50 text-blue-500'
+                          }`}>
+                            {item.type || 'SISWA'}
                           </span>
                         </td>
                         <td className="py-4 px-2">

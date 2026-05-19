@@ -28,11 +28,20 @@ model Attendance {
 }
 
 model Teacher {
+  id           String              @id @default(uuid())
+  name         String
+  nip          String              @unique
+  role         String
+  qr_code      String              @unique
+  parent_phone String              @default("62895326243945")
+  attendances  TeacherAttendance[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model TeacherAttendance {
   id        String   @id @default(uuid())
-  name      String
-  nip       String   @unique
-  role      String
-  qr_code   String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  teacherId String
+  teacher   Teacher  @relation(fields: [teacherId], references: [id])
+  timestamp DateTime @default(now())
 }

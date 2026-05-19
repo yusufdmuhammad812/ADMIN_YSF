@@ -160,6 +160,19 @@ const StudentsPage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validasi tipe file
+    const fileType = file.name.split('.').pop().toLowerCase();
+    if (fileType !== 'xlsx' && fileType !== 'xls') {
+      alert("Format file tidak didukung! Mohon upload file Excel (.xlsx atau .xls).");
+      return;
+    }
+
+    // Validasi ukuran file (maksimal 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran file terlalu besar! Maksimal ukuran file adalah 5MB.");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {

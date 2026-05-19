@@ -157,6 +157,19 @@ const TeachersPage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validasi tipe file
+    const fileType = file.name.split('.').pop().toLowerCase();
+    if (fileType !== 'xlsx' && fileType !== 'xls') {
+      alert("Format file tidak didukung! Mohon upload file Excel (.xlsx atau .xls).");
+      return;
+    }
+
+    // Validasi ukuran file (maksimal 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ukuran file terlalu besar! Maksimal ukuran file adalah 5MB.");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
@@ -171,12 +184,33 @@ const TeachersPage = () => {
           return;
         }
 
+        // Petakan header kolom bahasa Indonesia / Inggris secara fleksibel
+        const mappedTeachers = data.map(item => {
+          const name = item.name || item.Name || item.nama || item.Nama || item.NAMA || '';
+          const nip = String(item.nip || item.Nip || item.NIP || item.nip_guru || item.Nip_Guru || item.NIP_GURU || item.code || item.Code || item.CODE || '');
+          const role = item.role || item.Role || item.ROLE || item.jabatan || item.Jabatan || item.JABATAN || item.kategori || item.Kategori || item.KATEGORI || 'Guru Mapel';
+          
+          return {
+            name: String(name).trim(),
+            nip: String(nip).trim(),
+            role: String(role).trim()
+          };
+        });
+
+        // Filter data guru yang valid (harus memiliki Nama dan NIP)
+        const validTeachers = mappedTeachers.filter(t => t.name && t.nip);
+
+        if (validTeachers.length === 0) {
+          alert("Tidak ada data guru valid ditemukan! Pastikan file Excel Anda memiliki kolom Nama dan NIP yang terisi.");
+          return;
+        }
+
         // Send to backend
         const baseUrl = getBaseUrl();
         const res = await fetch(`${baseUrl}/api/dashboard/teachers/import`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ teachers: data }),
+          body: JSON.stringify({ teachers: validTeachers }),
         });
 
         const result = await res.json();
