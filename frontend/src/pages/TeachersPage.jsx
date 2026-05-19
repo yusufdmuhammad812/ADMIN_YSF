@@ -77,7 +77,11 @@ const TeachersPage = () => {
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan sistem saat menyimpan data.");
+      if (err.message.includes('fetch') || err.name === 'TypeError') {
+        alert("Gagal terhubung ke server backend! Pastikan server backend lokal Anda sudah dinyalakan di port 3001.");
+      } else {
+        alert("Terjadi kesalahan sistem saat menyimpan data.");
+      }
     }
   };
 
@@ -110,7 +114,11 @@ const TeachersPage = () => {
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan sistem saat update data.");
+      if (err.message.includes('fetch') || err.name === 'TypeError') {
+        alert("Gagal terhubung ke server backend! Pastikan server backend lokal Anda sudah dinyalakan di port 3001.");
+      } else {
+        alert("Terjadi kesalahan sistem saat update data.");
+      }
     }
   };
 
@@ -125,7 +133,12 @@ const TeachersPage = () => {
         alert("Gagal menghapus data.");
       }
     } catch (error) {
-      alert("Gagal menghapus data");
+      console.error(error);
+      if (error.message.includes('fetch') || error.name === 'TypeError') {
+        alert("Gagal terhubung ke server backend! Pastikan server backend lokal Anda sudah dinyalakan di port 3001.");
+      } else {
+        alert("Gagal menghapus data");
+      }
     }
   };
 

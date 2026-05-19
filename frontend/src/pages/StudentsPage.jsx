@@ -82,7 +82,11 @@ const StudentsPage = () => {
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan sistem saat menyimpan data.");
+      if (err.message.includes('fetch') || err.name === 'TypeError') {
+        alert("Gagal terhubung ke server backend! Pastikan server backend lokal Anda sudah dinyalakan di port 3001.");
+      } else {
+        alert("Terjadi kesalahan sistem saat menyimpan data.");
+      }
     }
   };
 
@@ -98,7 +102,11 @@ const StudentsPage = () => {
       }
     } catch (err) {
       console.error(err);
-      alert("Error saat menghapus siswa.");
+      if (err.message.includes('fetch') || err.name === 'TypeError') {
+        alert("Gagal terhubung ke server backend! Pastikan server backend lokal Anda sudah dinyalakan di port 3001.");
+      } else {
+        alert("Error saat menghapus siswa.");
+      }
     }
   };
 
@@ -140,7 +148,11 @@ const StudentsPage = () => {
       }
     } catch (err) {
       console.error(err);
-      alert("Terjadi kesalahan sistem saat update data.");
+      if (err.message.includes('fetch') || err.name === 'TypeError') {
+        alert("Gagal terhubung ke server backend! Pastikan server backend lokal Anda sudah dinyalakan di port 3001.");
+      } else {
+        alert("Terjadi kesalahan sistem saat update data.");
+      }
     }
   };
 
