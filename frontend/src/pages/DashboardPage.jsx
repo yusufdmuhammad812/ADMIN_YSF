@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import { QRCodeSVG } from 'qrcode.react';
 
 const StatCard = ({ title, value, icon: Icon, color, decorColor }) => (
   <div className="admin-card p-6 flex flex-col justify-between relative overflow-hidden h-40">
@@ -286,16 +287,38 @@ const DashboardPage = () => {
                 </div>
               </div>
 
+              {/* Tampilan QR Code untuk Scan Langsung dari Website */}
+              {waStatus.hasQR && waStatus.qrCode && (
+                <div className="flex flex-col items-center justify-center p-4 bg-white rounded-2xl border border-amber-100 shadow-sm mb-4">
+                  <p className="text-[11px] font-black text-amber-700 uppercase tracking-widest mb-3">Scan QR di Bawah Ini:</p>
+                  <div className="p-3 bg-white rounded-xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                    <QRCodeSVG value={waStatus.qrCode} size={180} level="M" includeMargin={true} />
+                  </div>
+                  <p className="text-[9px] text-gray-400 text-center mt-3 font-medium animate-pulse">
+                    Masa berlaku QR terbatas. Silakan scan secepatnya.
+                  </p>
+                </div>
+              )}
+
               {/* Instruksi jika belum login */}
               {(waStatus.hasQR || waStatus.status === 'disconnected') && !waStatus.isConnected && (
                 <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
                   <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider mb-1">Cara Aktivasi</p>
                   <ol className="text-[10px] text-amber-700 space-y-1 list-decimal list-inside">
-                    <li>Buka terminal server backend</li>
-                    <li>Akan muncul QR Code</li>
-                    <li>Buka WhatsApp di HP</li>
-                    <li>Titik 3 → Perangkat Tertaut</li>
-                    <li>Scan QR Code tersebut</li>
+                    {waStatus.hasQR ? (
+                      <>
+                        <li>Buka WhatsApp di HP Anda</li>
+                        <li>Ketuk menu Titik 3 atau Pengaturan</li>
+                        <li>Pilih "Perangkat Tertaut"</li>
+                        <li>Scan QR Code yang tampil di atas langsung dari layar web!</li>
+                      </>
+                    ) : (
+                      <>
+                        <li>Pastikan server backend berjalan</li>
+                        <li>Hubungkan backend dengan internet</li>
+                        <li>Sistem akan memuat QR Code otomatis</li>
+                      </>
+                    )}
                   </ol>
                 </div>
               )}
