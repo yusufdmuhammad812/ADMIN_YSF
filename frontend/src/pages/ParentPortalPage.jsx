@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, UserCircle, Clock, Calendar, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+import { getBaseUrl } from '../utils/api';
+
 const ParentPortalPage = () => {
   const [nisn, setNisn] = useState('');
   const [results, setResults] = useState([]);
@@ -18,7 +20,7 @@ const ParentPortalPage = () => {
     setResults([]);
 
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const response = await fetch(`${baseUrl}/api/parent/check/${nisn}`);
       const data = await response.json();
 

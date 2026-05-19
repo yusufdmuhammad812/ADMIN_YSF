@@ -10,6 +10,8 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import AdminLayout from '../components/AdminLayout';
 
+import { getBaseUrl } from '../utils/api';
+
 const PrintQRPage = () => {
   const [dataList, setDataList] = useState([]); // Will store students or teachers
   const [isLoading, setIsLoading] = useState(true);
@@ -21,7 +23,7 @@ const PrintQRPage = () => {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const endpoint = category === 'siswa' ? '/api/dashboard/students' : '/api/dashboard/teachers';
       const res = await fetch(`${baseUrl}${endpoint}`);
       const data = await res.json();

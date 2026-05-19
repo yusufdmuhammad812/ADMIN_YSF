@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import AdminLayout from '../components/AdminLayout';
 
+import { getBaseUrl } from '../utils/api';
+
 const ReportsPage = () => {
   const [attendances, setAttendances] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +21,7 @@ const ReportsPage = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/attendances`);
       const data = await res.json();
       setAttendances(data);

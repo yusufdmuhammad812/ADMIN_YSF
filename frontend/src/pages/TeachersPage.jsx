@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import { getBaseUrl } from '../utils/api';
 
 const TeachersPage = () => {
   const navigate = useNavigate();
@@ -35,7 +36,7 @@ const TeachersPage = () => {
   const fetchTeachers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/teachers`);
       const data = await res.json();
       setTeachers(data);
@@ -59,7 +60,7 @@ const TeachersPage = () => {
   const handleAddTeacher = async (e) => {
     e.preventDefault();
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/teachers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -93,7 +94,7 @@ const TeachersPage = () => {
   const handleUpdateTeacher = async (e) => {
     e.preventDefault();
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/teachers/${editTeacher.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -116,7 +117,7 @@ const TeachersPage = () => {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Yakin ingin menghapus data ${name}?`)) return;
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/teachers/${id}`, { method: 'DELETE' });
       if (res.ok) {
         fetchTeachers();
@@ -158,7 +159,7 @@ const TeachersPage = () => {
         }
 
         // Send to backend
-        const baseUrl = `http://${window.location.hostname}:3001`;
+        const baseUrl = getBaseUrl();
         const res = await fetch(`${baseUrl}/api/dashboard/teachers/import`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

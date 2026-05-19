@@ -14,6 +14,7 @@ import {
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
+import { getBaseUrl } from '../utils/api';
 
 const StudentsPage = () => {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ const StudentsPage = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/students`);
       const data = await res.json();
       setStudents(data);
@@ -61,7 +62,7 @@ const StudentsPage = () => {
   const handleAddStudent = async (e) => {
     e.preventDefault();
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/students`, {
         method: 'POST',
         headers: {
@@ -88,7 +89,7 @@ const StudentsPage = () => {
   const handleDeleteStudent = async (id, name) => {
     if (!window.confirm(`Yakin ingin menghapus data ${name}? Semua riwayat absensinya juga akan ikut terhapus.`)) return;
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/students/${id}`, { method: 'DELETE' });
       if (res.ok) {
         loadData();
@@ -116,7 +117,7 @@ const StudentsPage = () => {
   const handleUpdateStudent = async (e) => {
     e.preventDefault();
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/dashboard/students/${editStudent.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },

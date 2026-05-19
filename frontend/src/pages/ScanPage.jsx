@@ -5,6 +5,8 @@ import { CheckCircle2, XCircle, Search, QrCode, Camera } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 
+import { getBaseUrl } from '../utils/api';
+
 const ScanPage = () => {
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
@@ -34,7 +36,7 @@ const ScanPage = () => {
               setCameraActive(false);
               await html5QrCode.stop();
 
-              const baseUrl = `http://${window.location.hostname}:3001`;
+              const baseUrl = getBaseUrl();
               const response = await fetch(`${baseUrl}/api/scan`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

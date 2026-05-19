@@ -19,6 +19,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
 import { QRCodeSVG } from 'qrcode.react';
+import { getBaseUrl } from '../utils/api';
 
 const StatCard = ({ title, value, icon: Icon, color, decorColor }) => (
   <div className="admin-card p-6 flex flex-col justify-between relative overflow-hidden h-40">
@@ -43,10 +44,31 @@ const DashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [waStatus, setWaStatus] = useState({ status: 'loading', isConnected: false, hasQR: false, phoneInfo: null });
+  const [showApiConfig, setShowApiConfig] = useState(false);
+  const [customIp, setCustomIp] = useState(localStorage.getItem('backend_url') || 'http://localhost:3001');
+
+  const handleSaveIp = () => {
+    if (customIp.trim()) {
+      let url = customIp.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'http://' + url;
+      }
+      localStorage.setItem('backend_url', url);
+      alert('Alamat IP Server berhasil disimpan! Halaman akan dimuat ulang.');
+      window.location.reload();
+    }
+  };
+
+  const handleResetIp = () => {
+    localStorage.removeItem('backend_url');
+    setCustomIp('http://localhost:3001');
+    alert('Alamat IP Server dikembalikan ke default. Halaman akan dimuat ulang.');
+    window.location.reload();
+  };
 
   const loadData = useCallback(async () => {
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const [resStats, resAttendances] = await Promise.all([
         fetch(`${baseUrl}/api/dashboard/stats`),
         fetch(`${baseUrl}/api/dashboard/attendances`)
@@ -66,7 +88,7 @@ const DashboardPage = () => {
   // Polling status WhatsApp setiap 10 detik
   const fetchWaStatus = useCallback(async () => {
     try {
-      const baseUrl = `http://${window.location.hostname}:3001`;
+      const baseUrl = getBaseUrl();
       const res = await fetch(`${baseUrl}/api/wa/status`);
       if (res.ok) {
         const data = await res.json();
@@ -325,6 +347,48 @@ const DashboardPage = () => {
 
               {waStatus.isConnected && (
                 <p className="text-[10px] text-gray-400 text-center">Notifikasi otomatis aktif ke semua wali murid</p>
+              )}
+
+              {/* Konfigurasi IP Backend (Jika Terputus) */}
+              {!waStatus.isConnected && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <button 
+                    onClick={() => setShowApiConfig(!showApiConfig)}
+                    className="text-[10px] font-bold text-gray-400 hover:text-pesantren-primary flex items-center gap-1 mx-auto transition-colors"
+                  >
+                    ⚙️ {showApiConfig ? 'Sembunyikan Pengaturan IP' : 'Pengaturan IP Server Backend'}
+                  </button>
+                  {showApiConfig && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-[9px] text-gray-400 font-medium">
+                        Masukkan IP komputer server backend Anda jika tidak menggunakan localhost:
+                      </p>
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          value={customIp}
+                          onChange={(e) => setCustomIp(e.target.value)}
+                          placeholder="http://localhost:3001"
+                          className="flex-1 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-lg text-xs font-mono outline-none focus:ring-1 focus:ring-pesantren-emerald"
+                        />
+                        <button 
+                          onClick={handleSaveIp}
+                          className="px-3 py-1.5 bg-pesantren-primary hover:bg-pesantren-emerald text-white text-xs font-bold rounded-lg transition-colors active:scale-95"
+                        >
+                          Simpan
+                        </button>
+                      </div>
+                      {localStorage.getItem('backend_url') && (
+                        <button 
+                          onClick={handleResetIp}
+                          className="text-[9px] text-red-500 hover:underline block font-semibold text-center mx-auto mt-1"
+                        >
+                          Reset ke Default
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
