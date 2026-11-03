@@ -112,7 +112,7 @@ const DashboardPage = () => {
       try {
         localStorage.removeItem(`absensi_harian_${todayStr}`);
         localStorage.removeItem(`attendance_${todayStr}`);
-      } catch {}
+      } catch { }
 
       if (res.ok) {
         alert(data.message || "✅ Seluruh data absensi hari ini berhasil dikosongkan! Siswa kini dapat mencoba scan ulang.");
@@ -127,7 +127,7 @@ const DashboardPage = () => {
       try {
         localStorage.removeItem(`absensi_harian_${todayStr}`);
         localStorage.removeItem(`attendance_${todayStr}`);
-      } catch {}
+      } catch { }
       alert("✅ Data absensi harian lokal berhasil dibersihkan.");
       await loadData();
     } finally {
@@ -155,7 +155,7 @@ const DashboardPage = () => {
           const list = JSON.parse(localStorage.getItem(todayKey) || '[]');
           const filtered = list.filter((code) => code !== item.nisn && code !== item.qr_code);
           localStorage.setItem(todayKey, JSON.stringify(filtered));
-        } catch {}
+        } catch { }
 
         await loadData();
       } else {
@@ -206,9 +206,15 @@ const DashboardPage = () => {
   useEffect(() => {
     loadData();
     fetchWaStatus();
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const clockTimer = setInterval(() => setCurrentTime(new Date()), 1000);
+    // Polling data otomatis setiap 3 detik agar hasil absensi langsung muncul di dashboard
+    const dataTimer = setInterval(loadData, 3000);
     const waTimer = setInterval(fetchWaStatus, 10000);
-    return () => { clearInterval(timer); clearInterval(waTimer); };
+    return () => {
+      clearInterval(clockTimer);
+      clearInterval(dataTimer);
+      clearInterval(waTimer);
+    };
   }, [loadData, fetchWaStatus]);
 
   const formatDate = (date) => {
@@ -328,7 +334,13 @@ const DashboardPage = () => {
               <div className="flex items-center gap-2.5">
                 <div className="w-1.5 h-6 bg-[#1B31BB] rounded-full"></div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#2B3674]">Absensi Terbaru</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-[#2B3674]">Absensi Terbaru</h3>
+                    <span className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      Real-time
+                    </span>
+                  </div>
                   <p className="text-[11px] text-gray-400 font-medium">
                     Batas toleransi tepat waktu maksimal pukul <span className="font-bold text-amber-600">07:15 WIB</span>
                   </p>
@@ -364,8 +376,8 @@ const DashboardPage = () => {
                   type="button"
                   onClick={() => setStatusFilter('SEMUA')}
                   className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${statusFilter === 'SEMUA'
-                      ? 'bg-[#1B31BB] text-white shadow-xs'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#1B31BB] text-white shadow-xs'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                 >
                   Semua ({attendances.length})
@@ -374,8 +386,8 @@ const DashboardPage = () => {
                   type="button"
                   onClick={() => setStatusFilter('TEPAT_WAKTU')}
                   className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${statusFilter === 'TEPAT_WAKTU'
-                      ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                     }`}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
@@ -385,8 +397,8 @@ const DashboardPage = () => {
                   type="button"
                   onClick={() => setStatusFilter('TERLAMBAT')}
                   className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${statusFilter === 'TERLAMBAT'
-                      ? 'bg-amber-500 text-white shadow-xs'
-                      : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    ? 'bg-amber-500 text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
                     }`}
                 >
                   <Clock className="w-3.5 h-3.5" />
@@ -396,8 +408,8 @@ const DashboardPage = () => {
                   type="button"
                   onClick={() => setStatusFilter('TIDAK_ABSEN')}
                   className={`text-xs font-bold px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${statusFilter === 'TIDAK_ABSEN'
-                      ? 'bg-rose-500 text-white shadow-xs'
-                      : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
+                    ? 'bg-rose-500 text-white shadow-xs'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
                     }`}
                 >
                   <XCircle className="w-3.5 h-3.5" />
@@ -440,26 +452,33 @@ const DashboardPage = () => {
                       </td>
                     </tr>
                   ) : (
-                    displayList.slice(0, 10).map((item) => (
-                      <tr key={item.id} className="group hover:bg-gray-50/70 transition-all">
-                        {/* Kolom Waktu */}
-                        <td className="py-3.5 px-2">
-                          {item.timestamp ? (
-                            <div className="flex items-center gap-1">
-                              <span className="text-xs font-bold text-[#2B3674] font-mono">
-                                {new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
-                              </span>
-                              <span className="text-[9px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
-                                .{String(new Date(item.timestamp).getMilliseconds()).padStart(3, '0')}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1 text-gray-400">
-                              <span className="text-xs font-mono font-medium">—</span>
-                              <span className="text-[10px] text-gray-400 font-semibold">(Belum Absen)</span>
-                            </div>
-                          )}
-                        </td>
+                    displayList.slice(0, 10).map((item) => {
+                      const isRecent = item.timestamp && (Date.now() - new Date(item.timestamp).getTime() < 120000);
+                      return (
+                        <tr key={item.id} className={`group transition-all ${isRecent ? 'bg-emerald-50/70 hover:bg-emerald-100/70' : 'hover:bg-gray-50/70'}`}>
+                          {/* Kolom Waktu */}
+                          <td className="py-3.5 px-2">
+                            {item.timestamp ? (
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs font-bold text-[#2B3674] font-mono">
+                                  {new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                                </span>
+                                <span className="text-[9px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                                  .{String(new Date(item.timestamp).getMilliseconds()).padStart(3, '0')}
+                                </span>
+                                {isRecent && (
+                                  <span className="text-[9px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full animate-pulse ml-1.5 shadow-2xs">
+                                    Baru
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 text-gray-400">
+                                <span className="text-xs font-mono font-medium">—</span>
+                                <span className="text-[10px] text-gray-400 font-semibold">(Belum Absen)</span>
+                              </div>
+                            )}
+                          </td>
 
                         {/* Kolom Nama & Kelas */}
                         <td className="py-3.5 px-2">
@@ -476,8 +495,8 @@ const DashboardPage = () => {
                         {/* Kolom Tipe */}
                         <td className="py-3.5 px-2">
                           <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full uppercase ${item.type === 'GURU'
-                              ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                              : 'bg-blue-50 text-blue-600 border border-blue-100'
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                            : 'bg-blue-50 text-blue-600 border border-blue-100'
                             }`}>
                             {item.type || 'SISWA'}
                           </span>
@@ -520,9 +539,10 @@ const DashboardPage = () => {
                           )}
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
+                    );
+                  })
+                )}
+              </tbody>
               </table>
 
               {displayList.length > 10 && (
@@ -568,10 +588,10 @@ const DashboardPage = () => {
             <div className="admin-card p-6 relative overflow-hidden">
               <div className="flex items-center gap-2 mb-4">
                 <div className={`p-2 rounded-lg ${waStatus.isConnected ? 'bg-emerald-50 text-emerald-600' :
-                    waStatus.hasQR ? 'bg-amber-50 text-amber-500' :
-                      waStatus.status === 'connecting' ? 'bg-blue-50 text-blue-500' :
-                        waStatus.status === 'loading' ? 'bg-gray-50 text-gray-400' :
-                          'bg-red-50 text-red-400'
+                  waStatus.hasQR ? 'bg-amber-50 text-amber-500' :
+                    waStatus.status === 'connecting' ? 'bg-blue-50 text-blue-500' :
+                      waStatus.status === 'loading' ? 'bg-gray-50 text-gray-400' :
+                        'bg-red-50 text-red-400'
                   }`}>
                   <MessageCircle className="w-4 h-4" />
                 </div>
@@ -580,10 +600,10 @@ const DashboardPage = () => {
 
               {/* Indikator Status */}
               <div className={`flex items-center gap-3 p-3 rounded-xl mb-3 ${waStatus.isConnected ? 'bg-emerald-50 border border-emerald-100' :
-                  waStatus.hasQR ? 'bg-amber-50 border border-amber-100' :
-                    waStatus.status === 'connecting' ? 'bg-blue-50 border border-blue-100' :
-                      waStatus.status === 'loading' ? 'bg-gray-50 border border-gray-100' :
-                        'bg-red-50 border border-red-100'
+                waStatus.hasQR ? 'bg-amber-50 border border-amber-100' :
+                  waStatus.status === 'connecting' ? 'bg-blue-50 border border-blue-100' :
+                    waStatus.status === 'loading' ? 'bg-gray-50 border border-gray-100' :
+                      'bg-red-50 border border-red-100'
                 }`}>
                 {waStatus.isConnected && <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />}
                 {waStatus.hasQR && <Smartphone className="w-5 h-5 text-amber-500 flex-shrink-0 animate-pulse" />}
@@ -593,10 +613,10 @@ const DashboardPage = () => {
 
                 <div>
                   <p className={`text-xs font-bold ${waStatus.isConnected ? 'text-emerald-700' :
-                      waStatus.hasQR ? 'text-amber-700' :
-                        waStatus.status === 'connecting' ? 'text-blue-700' :
-                          waStatus.status === 'loading' ? 'text-gray-500' :
-                            'text-red-600'
+                    waStatus.hasQR ? 'text-amber-700' :
+                      waStatus.status === 'connecting' ? 'text-blue-700' :
+                        waStatus.status === 'loading' ? 'text-gray-500' :
+                          'text-red-600'
                     }`}>
                     {waStatus.isConnected && '✅ Terhubung & Aktif'}
                     {waStatus.hasQR && '📱 Menunggu Scan QR'}

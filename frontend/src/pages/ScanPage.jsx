@@ -74,6 +74,16 @@ const ScanPage = () => {
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Hasil presensi terakhir yang tetap tersimpan dan tampil di layar
+  const [lastAttendance, setLastAttendance] = useState(() => {
+    try {
+      const saved = localStorage.getItem('last_attendance_result');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   // Status & Kontrol Kamera
   const [cameraActive, setCameraActive] = useState(false);
   const [isStartingCamera, setIsStartingCamera] = useState(false);
@@ -83,7 +93,7 @@ const ScanPage = () => {
   const [torchOn, setTorchOn] = useState(false);
 
   // Countdown auto-close modal & input manual fallback
-  const [countdown, setCountdown] = useState(3.0);
+  const [countdown, setCountdown] = useState(5.0);
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualCode, setManualCode] = useState('');
 
@@ -105,7 +115,7 @@ const ScanPage = () => {
   // Hitung mundur otomatis menutup hasil scan
   useEffect(() => {
     if (!scanResult) return;
-    const duration = 3.0;
+    const duration = 5.0;
     setCountdown(duration);
 
     const startTime = Date.now();
@@ -254,6 +264,10 @@ const ScanPage = () => {
     playAttendanceSound(attendanceData.alreadyScanned);
     isModalOpenRef.current = true;
     setScanResult(attendanceData);
+    setLastAttendance(attendanceData);
+    try {
+      localStorage.setItem('last_attendance_result', JSON.stringify(attendanceData));
+    } catch {}
     setIsProcessing(false);
     setManualCode('');
     setShowManualInput(false);
@@ -608,22 +622,41 @@ const ScanPage = () => {
               </button>
 
               {showManualInput && (
-                <form onSubmit={handleManualSubmit} className="mt-2 flex gap-2 max-w-[320px] mx-auto">
-                  <input
-                    type="text"
-                    placeholder="Ketik NISN (contoh: 00943523)..."
-                    value={manualCode}
-                    onChange={(e) => setManualCode(e.target.value)}
-                    className="flex-1 text-xs px-3 py-1.5 bg-white border border-gray-300 rounded-xl focus:outline-none focus:border-pesantren-primary font-medium"
-                  />
-                  <button
-                    type="submit"
-                    disabled={!manualCode.trim() || isProcessing}
-                    className="px-3.5 py-1.5 bg-pesantren-primary text-white rounded-xl text-xs font-bold hover:bg-[#0c7853] disabled:opacity-50 cursor-pointer"
-                  >
-                    Absen
-                  </button>
-                </form>
+                <div className="mt-2 space-y-2 max-w-[340px] mx-auto">
+                  <form onSubmit={handleManualSubmit} className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Ketik NISN (contoh: 00943523)..."
+                      value={manualCode}
+                      onChange={(e) => setManualCode(e.target.value)}
+                      className="flex-1 text-xs px-3 py-1.5 bg-white border border-gray-300 rounded-xl focus:outline-none focus:border-pesantren-primary font-medium"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!manualCode.trim() || isProcessing}
+                      className="px-3.5 py-1.5 bg-pesantren-primary text-white rounded-xl text-xs font-bold hover:bg-[#0c7853] disabled:opacity-50 cursor-pointer"
+                    >
+                      Absen
+                    </button>
+                  </form>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-[10px] text-gray-400 font-medium">Uji Coba:</span>
+                    <button
+                      type="button"
+                      onClick={() => processAttendanceScan('00943523')}
+                      className="text-[10px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded font-mono font-bold cursor-pointer transition-colors"
+                    >
+                      Kelvin (00943523)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => processAttendanceScan('0088884410')}
+                      className="text-[10px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded font-mono font-bold cursor-pointer transition-colors"
+                    >
+                      Selvia (0088884410)
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -649,6 +682,59 @@ const ScanPage = () => {
             )}
           </AnimatePresence>
         </motion.div>
+
+        {/* Kartu Hasil Absensi Terakhir (Tetap muncul di layar agar siswa & guru bisa melihat hasilnya) */}
+        {lastAttendance && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full bg-white rounded-2xl shadow-md border border-emerald-100 p-3.5 text-left space-y-2 relative overflow-hidden"
+          >
+            <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">
+                  Hasil Presensi Terakhir:
+                </span>
+              </div>
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                lastAttendance.alreadyScanned
+                  ? 'bg-amber-100 text-amber-800'
+                  : lastAttendance.isLate
+                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                    : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                {lastAttendance.alreadyScanned
+                  ? 'Sudah Absen Hari Ini'
+                  : lastAttendance.isLate
+                    ? 'Terlambat (> 07:15)'
+                    : 'Hadir Tepat Waktu'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1 pr-2">
+                <h4 className="text-sm sm:text-base font-extrabold text-gray-800 leading-tight truncate">
+                  {lastAttendance.name}
+                </h4>
+                <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                  {lastAttendance.isTeacher ? lastAttendance.class : `Kelas ${lastAttendance.class}`} • NISN: <span className="font-mono font-bold text-gray-700">{lastAttendance.nisn}</span>
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="text-sm font-black font-mono text-pesantren-primary block">
+                  {lastAttendance.hours}:{lastAttendance.minutes}:{lastAttendance.seconds}
+                </span>
+                <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">
+                  WIB (UTC+7)
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Modal Hasil Absensi Sesuai Tampilan Asli + Waktu Digital Detail */}
         <AnimatePresence>
