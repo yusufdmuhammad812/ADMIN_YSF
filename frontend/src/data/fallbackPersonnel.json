@@ -1,0 +1,288 @@
+{
+  "students": [
+    {
+      "name": "ROSITA",
+      "nisn": "3115633122",
+      "class": "7A",
+      "qr_code": "3115633122"
+    },
+    {
+      "name": "KELVIN ALVINO",
+      "nisn": "00943523",
+      "class": "8A",
+      "qr_code": "00943523"
+    },
+    {
+      "name": "ARILIN AFRILIANI",
+      "nisn": "0122961005",
+      "class": "8A",
+      "qr_code": "0122961005"
+    },
+    {
+      "name": "DEO MALO",
+      "nisn": "0116618791",
+      "class": "9A",
+      "qr_code": "0116618791"
+    },
+    {
+      "name": "IKHSANNUDIN",
+      "nisn": "0113676385",
+      "class": "8A",
+      "qr_code": "0113676385"
+    },
+    {
+      "name": "INDI ROHENI",
+      "nisn": "0124143291",
+      "class": "8A",
+      "qr_code": "0124143291"
+    },
+    {
+      "name": "KADMINAH",
+      "nisn": "3116143874",
+      "class": "8A",
+      "qr_code": "3116143874"
+    },
+    {
+      "name": "MUHAMMAD KHAIDAR AL'AZIZ",
+      "nisn": "3136450044",
+      "class": "7A",
+      "qr_code": "3136450044"
+    },
+    {
+      "name": "MUHAMMAD NGUBAIDURROKHMAN",
+      "nisn": "0158365299",
+      "class": "7A",
+      "qr_code": "0158365299"
+    },
+    {
+      "name": "NADIF ASSATIBI",
+      "nisn": "0144594142",
+      "class": "7A",
+      "qr_code": "0144594142"
+    },
+    {
+      "name": "NAZLAH SIBRIYAH",
+      "nisn": "0106717224",
+      "class": "9A",
+      "qr_code": "0106717224"
+    },
+    {
+      "name": "NURLAELA",
+      "nisn": "3125061971",
+      "class": "7A",
+      "qr_code": "3125061971"
+    },
+    {
+      "name": "NURLAELI",
+      "nisn": "3131753491",
+      "class": "7A",
+      "qr_code": "3131753491"
+    },
+    {
+      "name": "NURSUCI",
+      "nisn": "0125307770",
+      "class": "7A",
+      "qr_code": "0125307770"
+    },
+    {
+      "name": "PUPUT MELATI",
+      "nisn": "0122918934",
+      "class": "9A",
+      "qr_code": "0122918934"
+    },
+    {
+      "name": "SAFIRA KIREINA NAWAWI",
+      "nisn": "3147905878",
+      "class": "7A",
+      "qr_code": "3147905878"
+    },
+    {
+      "name": "Satriya Ade Ros Saputra",
+      "nisn": "0104976945",
+      "class": "8A",
+      "qr_code": "0104976945"
+    },
+    {
+      "name": "SELVIA",
+      "nisn": "0088884410",
+      "class": "9A",
+      "qr_code": "0088884410"
+    },
+    {
+      "name": "SINTIYANI",
+      "nisn": "0099313457",
+      "class": "8A",
+      "qr_code": "0099313457"
+    },
+    {
+      "name": "SUBKHI HIDAYAT",
+      "nisn": "3135246176",
+      "class": "7A",
+      "qr_code": "3135246176"
+    },
+    {
+      "name": "YOSIPATUL DWI ARIYANTO",
+      "nisn": "0099777724",
+      "class": "8A",
+      "qr_code": "0099777724"
+    },
+    {
+      "name": "YUDHISTIRA RAMADHAN",
+      "nisn": "0138805947",
+      "class": "7A",
+      "qr_code": "0138805947"
+    },
+    {
+      "name": "YUSUP INDRAWAN",
+      "nisn": "0105019396",
+      "class": "9A",
+      "qr_code": "0105019396"
+    },
+    {
+      "name": "ADIAS FERDIAN NAWAWI",
+      "nisn": "0126450562",
+      "class": "8A",
+      "qr_code": "0126450562"
+    },
+    {
+      "name": "ADINDA RAHMAWATI",
+      "nisn": "0138131948",
+      "class": "7A",
+      "qr_code": "0138131948"
+    },
+    {
+      "name": "AGUNG FATHEKHA",
+      "nisn": "0086704048",
+      "class": "9A",
+      "qr_code": "0086704048"
+    },
+    {
+      "name": "ALDI MULFAIS",
+      "nisn": "0121071622",
+      "class": "7A",
+      "qr_code": "0121071622"
+    },
+    {
+      "name": "ALIF NAZRIL ILHAM",
+      "nisn": "0119206434",
+      "class": "9A",
+      "qr_code": "0119206434"
+    },
+    {
+      "name": "Aqila Khesia Marella",
+      "nisn": "3120591379",
+      "class": "8A",
+      "qr_code": "3120591379"
+    },
+    {
+      "name": "MAULANA ABU HUDZAIFAH",
+      "nisn": "3126703320",
+      "class": "8A",
+      "qr_code": "3126703320"
+    },
+    {
+      "name": "MAULANA SIDIQ",
+      "nisn": "3134583984",
+      "class": "7A",
+      "qr_code": "3134583984"
+    },
+    {
+      "name": "MOH SYAFIQ ULINUHA",
+      "nisn": "3129434529",
+      "class": "7A",
+      "qr_code": "3129434529"
+    },
+    {
+      "name": "MUHAMAD ABIL WAFA",
+      "nisn": "0092673953",
+      "class": "8A",
+      "qr_code": "0092673953"
+    },
+    {
+      "name": "MUHAMMAD AFRIZAL",
+      "nisn": "3134592846",
+      "class": "7A",
+      "qr_code": "3134592846"
+    },
+    {
+      "name": "Muhammad Fardana",
+      "nisn": "0097520114",
+      "class": "9A",
+      "qr_code": "0097520114"
+    },
+    {
+      "name": "RAFAEL",
+      "nisn": "0112214220",
+      "class": "8A",
+      "qr_code": "0112214220"
+    },
+    {
+      "name": "REVAN",
+      "nisn": "0087480354",
+      "class": "9A",
+      "qr_code": "0087480354"
+    },
+    {
+      "name": "RODHOTUL JANNAH",
+      "nisn": "3128755216",
+      "class": "7A",
+      "qr_code": "3128755216"
+    }
+  ],
+  "teachers": [
+    {
+      "name": "Aris Hidayat, S. Pd",
+      "role": "Tendik",
+      "nip": "T-001",
+      "qr_code": "T-001"
+    },
+    {
+      "name": "Imayyah, S. Pdi",
+      "role": "Guru",
+      "nip": "G-001",
+      "qr_code": "G-001"
+    },
+    {
+      "name": "Siti Sarah, S. Pd",
+      "role": "Guru",
+      "nip": "G-002",
+      "qr_code": "G-002"
+    },
+    {
+      "name": "Siti Hidayatul Ida, S. Ag",
+      "role": "Guru",
+      "nip": "G-003",
+      "qr_code": "G-003"
+    },
+    {
+      "name": "Rismawati, S. Pd",
+      "role": "Guru",
+      "nip": "G-004",
+      "qr_code": "G-004"
+    },
+    {
+      "name": "Mufatikhah, S. Pd",
+      "role": "Guru",
+      "nip": "G-005",
+      "qr_code": "G-005"
+    },
+    {
+      "name": "Wahyu Bontot, S. Kom",
+      "role": "Staff (Operator)",
+      "nip": "S-001",
+      "qr_code": "S-001"
+    },
+    {
+      "name": "Muhammad Yusuf, S. Kom",
+      "role": "Staff (Bendahara)",
+      "nip": "S-002",
+      "qr_code": "S-002"
+    },
+    {
+      "name": "M. Muroji Hibrom, S. Pdi",
+      "role": "Staff (Kurikulum)",
+      "nip": "S-003",
+      "qr_code": "S-003"
+    }
+  ]
+}

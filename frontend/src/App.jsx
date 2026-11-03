@@ -28,7 +28,7 @@ function App() {
         <Route path="/" element={<ScanPage />} />
         <Route path="/cek" element={<ParentPortalPage />} />
         <Route path="/login" element={<LoginPage />} />
-        
+
         {/* Admin Routes */}
         <Route path="/admin" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/admin/students" element={<ProtectedRoute><StudentsPage /></ProtectedRoute>} />
@@ -38,7 +38,7 @@ function App() {
         <Route path="/admin/print-qr" element={<ProtectedRoute><PrintQRPage /></ProtectedRoute>} />
         <Route path="/admin/identity" element={<ProtectedRoute><IdentityPage /></ProtectedRoute>} />
         <Route path="/admin/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-        
+
         {/* Redirect unknown routes */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

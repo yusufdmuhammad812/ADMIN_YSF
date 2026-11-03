@@ -13,37 +13,20 @@ import {
   Calendar,
   Sparkles,
   User,
-  Hash,
-  MessageCircle,
-  ChevronRight,
-  Keyboard,
-  X,
-  ShieldCheck,
-  Send,
-  Zap,
   Flashlight,
-  RefreshCw,
   Play,
-  Wifi,
-  Globe,
-  Settings,
-  ExternalLink,
-  Check,
+  X,
+  ChevronRight,
+  ShieldCheck,
   Radio
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 
 import { getBaseUrl } from '../utils/api';
+import fallbackPersonnel from '../data/fallbackPersonnel.json';
 
-// Pilihan Mode Kecepatan Scan untuk Antrean Santri
-const SPEED_MODES = [
-  { id: 'rush', label: 'Kilat 1.5s', sec: 1.5, desc: 'Untuk antrean padat santri' },
-  { id: 'fast', label: 'Cepat 3s', sec: 3.0, desc: 'Ideal & terbaca jelas' },
-  { id: 'relaxed', label: 'Santai 6s', sec: 6.0, desc: 'Verifikasi mendalam' }
-];
-
-// Audio feedback helper menggunakan Web Audio API (Tanpa latensi & file eksternal)
+// Audio feedback helper menggunakan Web Audio API murni
 const playAttendanceSound = (alreadyScanned = false) => {
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -51,7 +34,7 @@ const playAttendanceSound = (alreadyScanned = false) => {
     const ctx = new AudioContext();
 
     if (alreadyScanned) {
-      // Dua nada pemberitahuan lembut untuk santri yang sudah absen hari ini
+      // Nada lembut untuk santri yang sudah absen
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'triangle';
@@ -77,99 +60,51 @@ const playAttendanceSound = (alreadyScanned = false) => {
         osc.start(startTime);
         osc.stop(startTime + duration);
       };
-      playTone(523.25, ctx.currentTime, 0.15);
-      playTone(659.25, ctx.currentTime + 0.08, 0.15);
-      playTone(783.99, ctx.currentTime + 0.16, 0.3);
+      playTone(523.25, ctx.currentTime, 0.12);
+      playTone(659.25, ctx.currentTime + 0.08, 0.12);
+      playTone(783.99, ctx.currentTime + 0.16, 0.28);
     }
   } catch {
-    // Abaikan jika browser membatasi Web Audio tanpa gesture awal
+    // Abaikan jika browser membatasi audio tanpa gesture awal
   }
 };
 
 const ScanPage = () => {
-  // Hasil presensi santri/guru
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Status & Pengaturan Kamera
+  // Status & Kontrol Kamera
   const [cameraActive, setCameraActive] = useState(false);
   const [isStartingCamera, setIsStartingCamera] = useState(false);
   const [cameraError, setCameraError] = useState(null);
-  const [cameras, setCameras] = useState([]);
-  const [selectedCameraId, setSelectedCameraId] = useState(() => localStorage.getItem('preferred_scanner_camera') || '');
   const [facingMode, setFacingMode] = useState(() => localStorage.getItem('preferred_scanner_facing') || 'environment');
-  const [speedMode, setSpeedMode] = useState(() => localStorage.getItem('preferred_scanner_speed') || 'fast');
-
-  // Fitur Hardware Kamera Tambahan
   const [hasTorch, setHasTorch] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
-  const [scanFlash, setScanFlash] = useState(false);
-  const [showCameraMenu, setShowCameraMenu] = useState(false);
 
-  // Countdown & Manual Input
+  // Countdown auto-close modal & input manual fallback
   const [countdown, setCountdown] = useState(3.0);
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualCode, setManualCode] = useState('');
 
-  // Pengaturan Koneksi Server HP <-> Laptop
-  const [showServerModal, setShowServerModal] = useState(false);
-  const [serverUrlInput, setServerUrlInput] = useState(() => getBaseUrl());
-  const [serverStatus, setServerStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
-  const [serverTesting, setServerTesting] = useState(false);
-  const [serverTestMsg, setServerTestMsg] = useState('');
-
-  // Target URL QR Code Buka di Smartphone
-  const [phoneQrType, setPhoneQrType] = useState('wifi'); // 'wifi' | 'github'
-
-  // Refs untuk menjaga streaming kamera tetap aktif tanpa restart
+  // Refs untuk streaming kamera lancar tanpa restart
   const scannerRef = useRef(null);
   const isProcessingRef = useRef(false);
   const isModalOpenRef = useRef(false);
   const lastScannedCodeRef = useRef('');
   const lastScannedTimeRef = useRef(0);
 
-  // Ambil durasi mode kecepatan saat ini
-  const currentSpeed = SPEED_MODES.find(m => m.id === speedMode) || SPEED_MODES[1];
-
-  // Helper cek apakah scanner sedang aktif
-  const isScannerActive = () => {
-    try {
-      return scannerRef.current && typeof scannerRef.current.getState === 'function' && scannerRef.current.getState() === 2;
-    } catch {
-      return false;
-    }
-  };
-
-  // Cek koneksi server backend saat awal buka
-  useEffect(() => {
-    let isSubscribed = true;
-    const checkServer = async () => {
-      try {
-        const baseUrl = getBaseUrl();
-        const res = await fetch(`${baseUrl}/api/dashboard/stats`, { signal: AbortSignal.timeout(3500) });
-        if (isSubscribed) {
-          setServerStatus(res.ok ? 'online' : 'offline');
-        }
-      } catch {
-        if (isSubscribed) setServerStatus('offline');
-      }
-    };
-    checkServer();
-    return () => { isSubscribed = false; };
-  }, []);
-
-  // Tutup modal hasil scan & LANGSUNG aktifkan kembali pendeteksian tanpa jeda restart kamera!
+  // Tutup modal hasil scan & LANGSUNG aktifkan kembali pendeteksian tanpa jeda restart kamera
   const handleCloseResult = useCallback(() => {
     setScanResult(null);
     isModalOpenRef.current = false;
     isProcessingRef.current = false;
   }, []);
 
-  // Countdown otomatis menutup hasil scan agar antrean berikutnya langsung jalan
+  // Hitung mundur otomatis menutup hasil scan
   useEffect(() => {
     if (!scanResult) return;
-    const duration = currentSpeed.sec;
+    const duration = 3.0;
     setCountdown(duration);
 
     const startTime = Date.now();
@@ -185,7 +120,7 @@ const ScanPage = () => {
     }, 100);
 
     return () => clearInterval(timer);
-  }, [scanResult, currentSpeed.sec, handleCloseResult]);
+  }, [scanResult, handleCloseResult]);
 
   // Shortcut Keyboard: Spasi, Enter, atau Escape langsung lanjut ke santri berikutnya
   useEffect(() => {
@@ -199,129 +134,159 @@ const ScanPage = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [scanResult, handleCloseResult]);
 
-  // Fungsi Inti Memproses Absensi ke Server Backend
+  // Fungsi Inti Memproses Absensi (Online Backend + Otomatis Fallback jika di HP via GitHub Pages)
   const processAttendanceScan = useCallback(async (code) => {
     if (!code || !code.trim()) return;
 
     setIsProcessing(true);
+    const trimmedCode = code.trim();
 
+    // Waktu presisi lokal WIB (UTC+7)
+    const dateObj = new Date();
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+    const milliseconds = String(dateObj.getMilliseconds()).padStart(3, '0');
+    const hoursNum = parseInt(hours, 10);
+    const minutesNum = parseInt(minutes, 10);
+
+    // Batas waktu terlambat: 07:15:00 WIB
+    const isLateCheck = hoursNum > 7 || (hoursNum === 7 && minutesNum > 15);
+    const dateFull = dateObj.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    let attendanceData = null;
+    let isAlreadyScanned = false;
+
+    // 1. Coba hubungi server backend
     try {
       const baseUrl = getBaseUrl();
       const response = await fetch(`${baseUrl}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qr_code: code.trim() })
+        body: JSON.stringify({ qr_code: trimmedCode }),
+        signal: AbortSignal.timeout(3000)
       });
 
-      const data = await response.json();
+      if (response.ok) {
+        const data = await response.json();
+        const isTeacher = data.type === 'teacher';
+        const person = isTeacher ? data.teacher : data.student;
+        isAlreadyScanned = !!data.alreadyScanned;
 
-      if (!response.ok) {
-        setError(data.error || "Gagal absen");
-        playAttendanceSound(true);
-        setTimeout(() => {
-          setError(null);
-          isProcessingRef.current = false;
-          setIsProcessing(false);
-        }, 2200);
-        return;
+        attendanceData = {
+          name: person?.name || 'Santri',
+          nisn: person?.nisn || person?.nip || trimmedCode,
+          class: person?.class || person?.role || '-',
+          isTeacher,
+          alreadyScanned: isAlreadyScanned,
+          isLate: data.isLate ?? isLateCheck,
+          status: data.status || (isLateCheck ? 'TERLAMBAT' : 'TEPAT WAKTU'),
+          hours,
+          minutes,
+          seconds,
+          milliseconds,
+          dateFull,
+          fullTime: `${hours}:${minutes}:${seconds}.${milliseconds} WIB`
+        };
+      }
+    } catch {
+      // Backend tidak terjangkau / Mixed Content di GitHub Pages
+      // Lanjut ke penanganan lokal mandiri di bawah
+    }
+
+    // 2. Jika backend offline / Mixed Content diakses dari HP via GitHub Pages, gunakan data santri fallback
+    if (!attendanceData) {
+      const cleanCode = trimmedCode.toLowerCase();
+      const studentMatch = fallbackPersonnel.students.find(
+        (s) => s.nisn.toLowerCase() === cleanCode || (s.qr_code && s.qr_code.toLowerCase() === cleanCode)
+      );
+      const teacherMatch = !studentMatch && fallbackPersonnel.teachers.find(
+        (t) => t.nip.toLowerCase() === cleanCode || (t.qr_code && t.qr_code.toLowerCase() === cleanCode)
+      );
+
+      // Cek apakah sudah absen hari ini di memori lokal
+      const todayKey = `absensi_harian_${dateObj.toISOString().slice(0, 10)}`;
+      let dailyHistory = [];
+      try {
+        dailyHistory = JSON.parse(localStorage.getItem(todayKey) || '[]');
+      } catch {
+        dailyHistory = [];
       }
 
-      // Waktu presisi sangat detail: Jam, Menit, Detik, Milidetik
-      const rawTimestamp = data.attendance?.timestamp || new Date().toISOString();
-      const dateObj = new Date(rawTimestamp);
+      isAlreadyScanned = dailyHistory.includes(trimmedCode);
+      if (!isAlreadyScanned) {
+        dailyHistory.push(trimmedCode);
+        localStorage.setItem(todayKey, JSON.stringify(dailyHistory));
+      }
 
-      const hours = String(dateObj.getHours()).padStart(2, '0');
-      const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-      const seconds = String(dateObj.getSeconds()).padStart(2, '0');
-      const milliseconds = String(dateObj.getMilliseconds()).padStart(3, '0');
+      const person = studentMatch || teacherMatch || {
+        name: `Santri / Tamu (${trimmedCode})`,
+        nisn: trimmedCode,
+        class: 'SMP-HT'
+      };
 
-      const isTeacher = data.type === 'teacher';
-      const person = isTeacher ? data.teacher : data.student;
+      const isTeacher = !!teacherMatch;
 
-      const dateFull = dateObj.toLocaleDateString('id-ID', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
-
-      // Bunyikan nada konfirmasi ceria seketika
-      playAttendanceSound(data.alreadyScanned);
-
-      // Buka modal hasil presensi
-      isModalOpenRef.current = true;
-      const hoursNum = parseInt(hours, 10);
-      const minutesNum = parseInt(minutes, 10);
-      const isLateCheck = data.isLate ?? (hoursNum > 7 || (hoursNum === 7 && minutesNum > 15));
-      const statusValue = data.status || (isLateCheck ? 'TERLAMBAT' : 'TEPAT WAKTU');
-
-      setScanResult({
-        type: data.type || 'student',
+      attendanceData = {
+        name: person.name,
+        nisn: person.nisn || person.nip || trimmedCode,
+        class: person.class || person.role || '-',
         isTeacher,
-        name: person?.name || 'Santri',
-        nisn: person?.nisn || person?.nip || code.trim(),
-        class: person?.class || person?.role || '-',
-        alreadyScanned: !!data.alreadyScanned,
-        status: statusValue,
+        alreadyScanned: isAlreadyScanned,
         isLate: isLateCheck,
-        attendanceId: data.attendance?.id || `ATT-${Date.now()}`,
+        status: isAlreadyScanned ? 'SUDAH ABSEN' : (isLateCheck ? 'TERLAMBAT' : 'TEPAT WAKTU'),
         hours,
         minutes,
         seconds,
         milliseconds,
-        fullTime: `${hours}:${minutes}:${seconds}.${milliseconds} WIB`,
         dateFull,
-        timestamp: rawTimestamp,
-      });
-
-      setServerStatus('online');
-      setManualCode('');
-      setShowManualInput(false);
-    } catch (err) {
-      console.error("Scan processing error:", err);
-      setError("Gagal terhubung ke server backend.");
-      setServerStatus('offline');
-      setTimeout(() => {
-        setError(null);
-        isProcessingRef.current = false;
-        setIsProcessing(false);
-      }, 3500);
-    } finally {
-      setIsProcessing(false);
+        fullTime: `${hours}:${minutes}:${seconds}.${milliseconds} WIB`
+      };
     }
+
+    // Bunyikan nada konfirmasi & tampilkan modal hasil presensi
+    playAttendanceSound(attendanceData.alreadyScanned);
+    isModalOpenRef.current = true;
+    setScanResult(attendanceData);
+    setIsProcessing(false);
+    setManualCode('');
+    setShowManualInput(false);
   }, []);
 
   const processAttendanceScanRef = useRef(processAttendanceScan);
   processAttendanceScanRef.current = processAttendanceScan;
 
-  // Hentikan scanner hardware secara bersih jika diperlukan
+  // Hentikan scanner hardware secara bersih
   const stopCurrentScanner = async () => {
     try {
-      if (scannerRef.current && isScannerActive()) {
+      if (scannerRef.current && scannerRef.current.getState && scannerRef.current.getState() === 2) {
         await scannerRef.current.stop();
       }
     } catch (err) {
-      console.warn("Stop scanner error:", err);
+      console.warn("Stop scanner warning:", err);
     }
   };
 
-  // Fungsi Mulai / Nyalakan Kamera dengan Optimalisasi Kecepatan Maksimal
-  const startScanner = useCallback(async (forcedFacing = null, forcedCameraId = null) => {
+  // Mulai / Nyalakan Kamera dengan Kecepatan Tinggi (25 FPS + Hardware Barcode Detector)
+  const startScanner = useCallback(async (forcedFacing = null) => {
     const readerEl = document.getElementById("reader");
     if (!readerEl) return;
 
     setIsStartingCamera(true);
     setCameraError(null);
 
-    // Hentikan stream lama terlebih dahulu jika sedang aktif
     await stopCurrentScanner();
 
-    // Buat instance Html5Qrcode dengan akselerasi hardware BarcodeDetector asli browser
     if (!scannerRef.current) {
       try {
         scannerRef.current = new Html5Qrcode("reader", {
           experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true // Deteksi hardware GPU kilat di Chrome / Android / Edge
+            useBarCodeDetectorIfSupported: true
           },
           verbose: false
         });
@@ -335,13 +300,10 @@ const ScanPage = () => {
 
     const html5QrCode = scannerRef.current;
 
-    // Callback saat QR Code berhasil dibaca (Kamera TETAP MENYALA & STREAMING!)
     const qrSuccessCallback = (decodedText) => {
-      // Jika modal sedang terbuka atau proses backend belum selesai, cegah scan dobel
       if (!decodedText || isProcessingRef.current || isModalOpenRef.current) return;
 
       const now = Date.now();
-      // Cegah scan berulang untuk santri yang sama dalam 2.5 detik
       if (lastScannedCodeRef.current === decodedText && (now - lastScannedTimeRef.current < 2500)) {
         return;
       }
@@ -350,24 +312,17 @@ const ScanPage = () => {
       lastScannedTimeRef.current = now;
       isProcessingRef.current = true;
 
-      // Efek kilatan hijau visual pada viewfinder
-      setScanFlash(true);
-      setTimeout(() => setScanFlash(false), 350);
-
-      // Proses absensi
       processAttendanceScanRef.current(decodedText);
     };
 
     const qrErrorCallback = () => {
-      // Frame rutin non-matching diabaikan untuk menjaga performa 25 FPS
+      // Abaikan frame yang belum terdeteksi agar tidak lag
     };
 
-    // Konfigurasi performa scan tinggi: 25 FPS, HD 720p, continuous autofocus
     const scannerConfig = {
       fps: 25,
-      qrbox: (viewfinderWidth, viewfinderHeight) => {
-        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-        const size = Math.floor(minEdge * 0.74);
+      qrbox: (w, h) => {
+        const size = Math.floor(Math.min(w, h) * 0.72);
         return {
           width: Math.max(size, 200),
           height: Math.max(size, 200)
@@ -382,23 +337,11 @@ const ScanPage = () => {
     };
 
     const targetFacing = forcedFacing || facingMode;
-    const targetCameraId = forcedCameraId !== null ? forcedCameraId : selectedCameraId;
-
-    // Urutan prioritas kamera agar PASTI berhasil menyala di segala perangkat (Laptop/HP/Tablet)
-    const attempts = [];
-    if (targetCameraId) {
-      attempts.push({ deviceId: { exact: targetCameraId } });
-    }
-    if (targetFacing) {
-      attempts.push({ facingMode: targetFacing });
-      // Fallback ke arah kamera sebaliknya jika mode awal tidak didukung driver
-      attempts.push({ facingMode: targetFacing === 'environment' ? 'user' : 'environment' });
-    } else {
-      attempts.push({ facingMode: 'environment' });
-      attempts.push({ facingMode: 'user' });
-    }
-    // Fallback generik terakhir
-    attempts.push({});
+    const attempts = [
+      { facingMode: targetFacing },
+      { facingMode: targetFacing === 'environment' ? 'user' : 'environment' },
+      {}
+    ];
 
     let started = false;
     let lastErr = null;
@@ -415,7 +358,6 @@ const ScanPage = () => {
         setCameraActive(true);
         setCameraError(null);
 
-        // Deteksi fitur lampu senter / torch jika didukung HP
         try {
           const caps = html5QrCode.getRunningTrackCapabilities?.() || {};
           setHasTorch(!!caps.torch);
@@ -425,74 +367,40 @@ const ScanPage = () => {
         break;
       } catch (err) {
         lastErr = err;
-        console.warn("Camera start constraint attempt failed:", constraint, err);
       }
     }
 
     if (!started) {
-      console.error("Semua percobaan kamera gagal:", lastErr);
+      console.warn("Semua percobaan kamera gagal:", lastErr);
       setCameraActive(false);
-      setCameraError("Kamera belum aktif. Klik tombol 'Aktifkan Kamera' atau berikan izin kamera di browser.");
-      setShowManualInput(true);
+      setCameraError("Kamera belum aktif. Klik tombol Nyalakan Kamera atau izinkan akses kamera di browser HP Anda.");
     }
     setIsStartingCamera(false);
-  }, [facingMode, selectedCameraId]);
+  }, [facingMode]);
 
-  // Deteksi daftar kamera hardware di perangkat saat awal load
-  useEffect(() => {
-    Html5Qrcode.getCameras()
-      .then((deviceList) => {
-        if (deviceList && deviceList.length > 0) {
-          setCameras(deviceList);
-        }
-      })
-      .catch((err) => {
-        console.warn("Html5Qrcode.getCameras info:", err);
-      });
-  }, []);
-
-  // Inisialisasi kamera satu kali saat halaman pertama dibuka
+  // Inisialisasi kamera saat pertama kali dimuat
   useEffect(() => {
     let isMounted = true;
-
-    const initTimer = setTimeout(() => {
-      if (isMounted) {
-        startScanner();
-      }
-    }, 250);
+    const timer = setTimeout(() => {
+      if (isMounted) startScanner();
+    }, 200);
 
     return () => {
       isMounted = false;
-      clearTimeout(initTimer);
+      clearTimeout(timer);
       stopCurrentScanner();
     };
   }, [startScanner]);
 
-  // Ganti Kamera Depan / Belakang (Flip Camera)
+  // Ganti Kamera Belakang / Depan
   const handleToggleFacingMode = async () => {
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nextFacing);
-    setSelectedCameraId('');
     localStorage.setItem('preferred_scanner_facing', nextFacing);
-    localStorage.removeItem('preferred_scanner_camera');
-    await startScanner(nextFacing, '');
+    await startScanner(nextFacing);
   };
 
-  // Pilih Kamera Spesifik (jika ada webcam USB atau banyak lensa)
-  const handleSelectCameraDevice = async (deviceId) => {
-    setSelectedCameraId(deviceId);
-    setShowCameraMenu(false);
-    localStorage.setItem('preferred_scanner_camera', deviceId);
-    await startScanner(facingMode, deviceId);
-  };
-
-  // Ubah Kecepatan Scan Antrean (Kilat 1.5s / Cepat 3s / Santai 6s)
-  const handleSpeedChange = (newMode) => {
-    setSpeedMode(newMode);
-    localStorage.setItem('preferred_scanner_speed', newMode);
-  };
-
-  // Saklar Lampu Senter / Flashlight untuk kondisi pencahayaan minim
+  // Lampu Senter / Flashlight
   const handleToggleTorch = async () => {
     if (!scannerRef.current || !hasTorch) return;
     try {
@@ -502,56 +410,19 @@ const ScanPage = () => {
       });
       setTorchOn(nextTorch);
     } catch (err) {
-      console.warn("Gagal mengubah status torch:", err);
+      console.warn("Torch error:", err);
     }
   };
 
-  // Fungsi Tes & Simpan IP Server Backend
-  const handleTestServer = async (urlToTest) => {
-    setServerTesting(true);
-    setServerTestMsg('');
-    try {
-      let clean = (urlToTest || serverUrlInput).trim();
-      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-        clean = 'http://' + clean;
-      }
-      const res = await fetch(`${clean}/api/dashboard/stats`, { signal: AbortSignal.timeout(4000) });
-      if (res.ok) {
-        const data = await res.json();
-        setServerTestMsg(`✅ Berhasil Terhubung! Terdeteksi ${data.totalStudents || 0} Santri.`);
-        setServerStatus('online');
-      } else {
-        setServerTestMsg(`⚠️ Server merespons HTTP ${res.status}.`);
-        setServerStatus('offline');
-      }
-    } catch (err) {
-      setServerTestMsg('❌ Gagal: Tidak dapat menghubungi server. Pastikan server backend di laptop/PC sedang berjalan.');
-      setServerStatus('offline');
-    } finally {
-      setServerTesting(false);
+  // Input manual submit
+  const handleManualSubmit = (e) => {
+    e.preventDefault();
+    if (manualCode.trim()) {
+      processAttendanceScan(manualCode.trim());
     }
   };
 
-  const handleSaveServerUrl = () => {
-    let clean = serverUrlInput.trim();
-    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-      clean = 'http://' + clean;
-    }
-    localStorage.setItem('backend_url', clean);
-    setShowServerModal(false);
-    alert(`Alamat server disimpan: ${clean}. Halaman akan memuat ulang.`);
-    window.location.reload();
-  };
-
-  const handleResetServerUrl = () => {
-    localStorage.removeItem('backend_url');
-    setServerUrlInput(getBaseUrl());
-    setShowServerModal(false);
-    alert('Alamat server direset ke otomatis. Halaman akan memuat ulang.');
-    window.location.reload();
-  };
-
-  // Global listener untuk USB Barcode / QR Scanner Gun fisik
+  // Global listener barcode scanner USB fisik
   useEffect(() => {
     let buffer = '';
     let lastKeyTime = Date.now();
@@ -561,9 +432,7 @@ const ScanPage = () => {
       if (scanResult) return;
 
       const currentTime = Date.now();
-      if (currentTime - lastKeyTime > 150) {
-        buffer = '';
-      }
+      if (currentTime - lastKeyTime > 150) buffer = '';
       lastKeyTime = currentTime;
 
       if (e.key === 'Enter') {
@@ -580,508 +449,321 @@ const ScanPage = () => {
     return () => window.removeEventListener('keydown', handleGlobalBarcode);
   }, [scanResult, processAttendanceScan]);
 
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (manualCode.trim()) {
-      processAttendanceScan(manualCode.trim());
-    }
-  };
+  // URL Target untuk Scan Buka di HP (GitHub Pages link)
+  const mobileLink = 'https://yusufdmuhammad812.github.io/ADMIN_YSF/';
+  const qrDisplayUrl = typeof window !== 'undefined' && window.location.href.includes('github.io')
+    ? window.location.href
+    : mobileLink;
 
-  // URL Target untuk Smartphone
-  const localWifiUrl = 'http://192.168.100.4:5173/';
-  const githubRepoUrl = 'https://yusufdmuhammad812.github.io/ADMIN_YSF/';
-  const currentMobileTarget = phoneQrType === 'wifi' ? localWifiUrl : githubRepoUrl;
-
-  const isAccessedFromPhone = typeof window !== 'undefined' && 
+  const isMobileBrowser = typeof window !== 'undefined' &&
     (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
 
   return (
-    <div className="min-h-screen islamic-pattern flex flex-col items-center justify-center px-4 py-6 relative overflow-hidden bg-[#F8F9FA]">
-      {/* Background Decor santri */}
+    <div className="min-h-screen islamic-pattern flex flex-col items-center justify-center p-4 relative overflow-hidden bg-[#F8F9FA]">
+      {/* Background Decor Pesantren */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <img
-          src="/pesantren_hero.png"
+          src={`${import.meta.env.BASE_URL}pesantren_hero.png`}
           alt="Decor"
-          className="w-full h-full object-cover opacity-[12%] filter blur-[6px]"
+          className="w-full h-full object-cover opacity-10 filter blur-[2px]"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-[#F8F9FA]/20 via-[#F8F9FA]/5 to-[#F8F9FA]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#F8F9FA]/40 via-transparent to-[#F8F9FA]"></div>
       </div>
 
-      <div className="w-full max-w-[480px] flex flex-col justify-between items-center relative z-10 space-y-3">
-        {/* Header E-ABSENSI */}
+      <div className="max-w-md w-full space-y-4 text-center relative z-10">
+        {/* Header E-ABSENSI Sesuai Tampilan Awal */}
         <motion.div
-          initial={{ y: -15, opacity: 0 }}
+          initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="w-full text-center space-y-1"
+          className="space-y-1 mb-2"
         >
+          <div className="flex justify-center mb-2">
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt="Logo"
+              className="w-24 h-24 sm:w-28 sm:h-28 object-contain mix-blend-multiply drop-shadow-sm"
+            />
+          </div>
           <div className="flex items-center justify-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-black text-pesantren-primary tracking-wider flex items-center gap-2">
-              <QrCode className="w-7 h-7 text-pesantren-gold" />
+            <h1 className="text-3xl font-black text-pesantren-primary tracking-tight flex items-center justify-center gap-2.5">
+              <QrCode className="w-8 h-8 text-pesantren-gold" />
               E-ABSENSI
             </h1>
-            {/* Indikator HP jika dibuka di smartphone */}
-            {isAccessedFromPhone && (
-              <span className="text-[9px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <Radio className="w-2.5 h-2.5 animate-pulse text-blue-600" />
-                HP Mode
+            {isMobileBrowser && (
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Radio className="w-2.5 h-2.5 text-emerald-600 animate-pulse" />
+                HP
               </span>
             )}
           </div>
-          <p className="text-gray-500 font-bold text-[10px] sm:text-[11px] tracking-[0.22em] uppercase">
+          <p className="text-pesantren-emerald font-bold text-xs tracking-[0.2em] uppercase">
             SMP Pesantren Hidayatut Tholibin
           </p>
-          <div className="h-[2px] w-10 bg-pesantren-gold mx-auto rounded-full mt-1.5"></div>
+          <div className="h-1 w-12 bg-pesantren-gold mx-auto rounded-full mt-2"></div>
         </motion.div>
 
-        {/* Toolbar Kamera & Mode Presensi Cepat */}
-        <div className="w-full space-y-2">
-          {/* Baris Status Kamera & Kontrol Cepat */}
-          <div className="flex items-center justify-between w-full px-1">
-            {/* Status Aktif Kamera */}
+        {/* Scanner Card Bersih & Presisi */}
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+          className="glass-card overflow-hidden shadow-2xl w-full"
+        >
+          {/* Header Bar Scanner */}
+          <div className="p-3.5 text-center border-b border-gray-100 bg-white/70 flex items-center justify-between px-4">
             <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                {cameraActive ? (
-                  <>
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                  </>
-                ) : (
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                )}
-              </span>
-              <span className="text-[11px] font-bold text-gray-700 tracking-wide">
-                {cameraActive ? 'Kamera Aktif (25 FPS Cepat)' : isStartingCamera ? 'Menyiapkan Kamera...' : 'Kamera Belum Aktif'}
-              </span>
+              <Camera className="w-4 h-4 text-pesantren-emerald" />
+              <h2 className="font-bold text-gray-700 text-xs sm:text-sm">
+                Arahkan QR Code Kartu ke Kamera
+              </h2>
             </div>
 
-            {/* Tombol-Tombol Aksi Cepat */}
             <div className="flex items-center gap-1.5">
-              {/* Tombol Balik Kamera (Depan / Belakang) */}
-              <button
-                type="button"
-                onClick={handleToggleFacingMode}
-                title={`Kamera saat ini: ${facingMode === 'environment' ? 'Belakang' : 'Depan'}. Klik untuk membalik.`}
-                className="p-1.5 rounded-full bg-white border border-gray-200 text-gray-700 hover:text-pesantren-primary hover:border-pesantren-primary/40 shadow-2xs transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-semibold"
-              >
-                <SwitchCamera className="w-3.5 h-3.5 text-pesantren-primary" />
-                <span className="hidden sm:inline">{facingMode === 'environment' ? 'Belakang' : 'Depan'}</span>
-              </button>
-
-              {/* Lampu Senter / Torch (jika didukung perangkat) */}
               {hasTorch && (
                 <button
                   type="button"
                   onClick={handleToggleTorch}
-                  title="Nyalakan Lampu Senter"
-                  className={`p-1.5 rounded-full border shadow-2xs transition-colors cursor-pointer ${torchOn
-                    ? 'bg-amber-400 text-gray-900 border-amber-500'
-                    : 'bg-white text-gray-600 border-gray-200 hover:text-amber-500'
-                    }`}
+                  title="Lampu Senter"
+                  className={`p-1.5 rounded-full border shadow-2xs transition-colors cursor-pointer ${
+                    torchOn ? 'bg-amber-400 text-gray-900 border-amber-500' : 'bg-white text-gray-500 border-gray-200'
+                  }`}
                 >
                   <Flashlight className="w-3.5 h-3.5" />
                 </button>
               )}
-
-              {/* Tombol Pengaturan Server IP */}
               <button
                 type="button"
-                onClick={() => setShowServerModal(true)}
-                title="Atur Koneksi Server Backend"
-                className={`p-1.5 rounded-full border shadow-2xs transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-semibold ${
-                  serverStatus === 'online'
-                    ? 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50'
-                    : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-                }`}
+                onClick={handleToggleFacingMode}
+                title="Ganti Kamera Depan / Belakang"
+                className="p-1.5 rounded-full bg-white border border-gray-200 text-gray-600 hover:text-pesantren-primary transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-semibold shadow-2xs"
               >
-                <Settings className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{serverStatus === 'online' ? 'Server OK' : 'Atur IP'}</span>
-              </button>
-
-              {/* Toggle Input Manual / Barcode Gun */}
-              <button
-                id="btn-manual-toggle"
-                type="button"
-                onClick={() => setShowManualInput((prev) => !prev)}
-                className="text-[11px] font-bold text-pesantren-primary hover:text-emerald-700 flex items-center gap-1 bg-white border border-emerald-200/80 px-2.5 py-1 rounded-full shadow-2xs hover:bg-emerald-50 transition-colors cursor-pointer"
-              >
-                <Keyboard className="w-3.5 h-3.5" />
-                <span>{showManualInput ? 'Tutup' : 'Input Manual'}</span>
+                <SwitchCamera className="w-3.5 h-3.5 text-pesantren-primary" />
+                <span className="hidden sm:inline text-[10px]">
+                  {facingMode === 'environment' ? 'Belakang' : 'Depan'}
+                </span>
               </button>
             </div>
           </div>
 
-          {/* Mode Kecepatan Antrean Selector */}
-          <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded-2xl border border-gray-200/70 shadow-2xs">
-            <span className="text-[10px] font-bold text-gray-500 flex items-center gap-1 uppercase tracking-wider">
-              <Zap className="w-3 h-3 text-amber-500" />
-              Kecepatan:
-            </span>
-            <div className="flex items-center gap-1">
-              {SPEED_MODES.map((mode) => (
-                <button
-                  key={mode.id}
-                  type="button"
-                  onClick={() => handleSpeedChange(mode.id)}
-                  title={mode.desc}
-                  className={`text-[10px] font-bold px-2.5 py-1 rounded-xl transition-all cursor-pointer ${speedMode === mode.id
-                    ? 'bg-pesantren-primary text-white shadow-2xs'
-                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                    }`}
-                >
-                  {mode.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Pilihan Kamera Spesifik jika perangkat memiliki lebih dari 1 kamera */}
-          {cameras.length > 1 && (
-            <div className="relative text-left">
-              <button
-                type="button"
-                onClick={() => setShowCameraMenu((prev) => !prev)}
-                className="text-[10px] text-gray-500 hover:text-pesantren-primary font-medium flex items-center gap-1 px-1 cursor-pointer"
-              >
-                <RefreshCw className="w-3 h-3 text-gray-400" />
-                <span>Pilih Sumber Kamera Hardware ({cameras.length} terdeteksi)</span>
-              </button>
-
-              {showCameraMenu && (
-                <div className="absolute top-6 left-0 right-0 bg-white rounded-xl shadow-lg border border-gray-200 p-2 z-30 space-y-1">
-                  {cameras.map((cam, idx) => (
-                    <button
-                      key={cam.id || idx}
-                      type="button"
-                      onClick={() => handleSelectCameraDevice(cam.id)}
-                      className={`w-full text-left text-xs px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer truncate ${selectedCameraId === cam.id
-                        ? 'bg-emerald-50 text-pesantren-primary font-bold'
-                        : 'text-gray-700 hover:bg-gray-50'
-                        }`}
-                    >
-                      {cam.label || `Kamera Hardware ${idx + 1}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Form Input NISN / Barcode Gun Manual */}
-          {showManualInput && (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -5 }}
-              className="w-full space-y-1.5"
-            >
-              <form
-                id="form-manual-scan"
-                onSubmit={handleManualSubmit}
-                className="w-full bg-white p-2.5 rounded-2xl shadow-sm border border-emerald-200 flex items-center gap-2"
-              >
-                <input
-                  id="input-manual-barcode"
-                  type="text"
-                  placeholder="Ketik NISN (contoh: 00943523) lalu Enter..."
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  autoFocus
-                  className="flex-1 text-xs px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-pesantren-primary font-medium"
-                />
-                <button
-                  id="btn-manual-submit"
-                  type="submit"
-                  disabled={!manualCode.trim() || isProcessing}
-                  className="px-4 py-2 bg-pesantren-primary text-white rounded-xl text-xs font-bold hover:bg-[#0c7853] disabled:opacity-50 flex items-center gap-1 shrink-0 cursor-pointer"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  <span>Absen</span>
-                </button>
-              </form>
-              <div className="flex items-center gap-1.5 px-2">
-                <span className="text-[10px] text-gray-400 font-semibold">Uji Coba Cepat:</span>
-                <button
-                  id="btn-demo-kelvin"
-                  type="button"
-                  onClick={() => processAttendanceScan('00943523')}
-                  className="text-[10px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md font-mono font-bold cursor-pointer transition-colors"
-                >
-                  KELVIN (00943523)
-                </button>
-                <button
-                  id="btn-demo-selvia"
-                  type="button"
-                  onClick={() => processAttendanceScan('0088884410')}
-                  className="text-[10px] bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-md font-mono font-bold cursor-pointer transition-colors"
-                >
-                  SELVIA (0088884410)
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Viewfinder Kamera Scanner: Frame presisi, responsif, dan halus */}
-        <motion.div
-          initial={{ scale: 0.96, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="w-full flex-1 flex items-center justify-center"
-        >
-          <div className={`bg-white p-2 rounded-[28px] shadow-[0_12px_35px_rgba(0,0,0,0.08)] border transition-all duration-300 w-full h-[60vh] max-h-[480px] min-h-[350px] flex items-center justify-center relative ${scanFlash ? 'border-emerald-400 ring-4 ring-emerald-400/40' : 'border-white/70'
-            }`}>
-            <div className={`w-full h-full relative overflow-hidden rounded-[22px] bg-black ${error ? 'opacity-25 grayscale' : 'opacity-100'}`}>
-              {/* Wadah Video Asli dari Html5Qrcode */}
+          {/* Viewfinder Kamera */}
+          <div className="p-3 sm:p-4 bg-white/30">
+            <div className="relative aspect-square max-w-[340px] mx-auto rounded-2xl overflow-hidden bg-black shadow-inner">
               <div id="reader" className="w-full h-full"></div>
 
-              {/* Garis Laser Animasi & Sudut Frame Presisi */}
+              {/* Laser Animasi & Sudut Frame */}
               {cameraActive && !scanResult && (
                 <div className="absolute inset-0 pointer-events-none flex justify-center z-10">
-                  {/* Animasi Laser Bar bergerak naik-turun */}
                   <motion.div
-                    animate={{ top: ["4%", "94%"] }}
+                    animate={{ top: ["8%", "90%"] }}
                     transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                    className="absolute left-6 right-6 h-[3px] bg-emerald-400 rounded-full shadow-[0_0_10px_#10B981,0_0_20px_#10B981]"
+                    className="absolute left-6 right-6 h-[2px] bg-emerald-400 rounded-full shadow-[0_0_8px_#10B981,0_0_16px_#10B981]"
                   />
-
-                  {/* 4 Sudut Panduan Penempatan Kartu QR */}
-                  <div className="absolute top-5 left-5 w-7 h-7 border-t-[3px] border-l-[3px] border-emerald-400 rounded-tl-lg shadow-sm"></div>
-                  <div className="absolute top-5 right-5 w-7 h-7 border-t-[3px] border-r-[3px] border-emerald-400 rounded-tr-lg shadow-sm"></div>
-                  <div className="absolute bottom-5 left-5 w-7 h-7 border-b-[3px] border-l-[3px] border-emerald-400 rounded-bl-lg shadow-sm"></div>
-                  <div className="absolute bottom-5 right-5 w-7 h-7 border-b-[3px] border-r-[3px] border-emerald-400 rounded-br-lg shadow-sm"></div>
-
-                  {/* Banner Bantuan di bagian bawah viewfinder */}
-                  <div className="absolute bottom-3 inset-x-4 flex justify-center">
-                    <span className="bg-black/60 backdrop-blur-md text-white/90 text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 shadow-xs">
-                      Arahkan QR Code Kartu Santri ke Dalam Kotak
-                    </span>
-                  </div>
+                  <div className="absolute top-4 left-4 w-8 h-8 border-t-4 border-l-4 border-white rounded-tl-xl shadow-xs"></div>
+                  <div className="absolute top-4 right-4 w-8 h-8 border-t-4 border-r-4 border-white rounded-tr-xl shadow-xs"></div>
+                  <div className="absolute bottom-4 left-4 w-8 h-8 border-b-4 border-l-4 border-white rounded-bl-xl shadow-xs"></div>
+                  <div className="absolute bottom-4 right-4 w-8 h-8 border-b-4 border-r-4 border-white rounded-br-xl shadow-xs"></div>
                 </div>
               )}
 
               {/* Status Menyiapkan Kamera */}
               {isStartingCamera && (
-                <div className="absolute inset-0 flex flex-col justify-center items-center text-white bg-black/80 backdrop-blur-xs rounded-[22px] p-4 text-center z-20">
-                  <div className="animate-spin w-9 h-9 border-4 border-white/20 border-t-emerald-400 rounded-full mb-2.5"></div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-white">Memulai Kamera Scanner...</p>
-                  <p className="text-[10px] text-gray-300 mt-1 max-w-[240px]">
-                    Mengoptimalkan sensor & pendeteksi QR code berkecepatan tinggi
-                  </p>
+                <div className="absolute inset-0 flex flex-col justify-center items-center text-white bg-black/70 backdrop-blur-xs rounded-2xl p-4 text-center z-20">
+                  <div className="animate-spin w-8 h-8 border-4 border-white/20 border-t-emerald-400 rounded-full mb-2"></div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider">Menyiapkan Kamera...</p>
+                  <p className="text-[10px] text-gray-300 mt-1">Mengaktifkan sensor QR Code berkecepatan tinggi</p>
                 </div>
               )}
 
-              {/* Tampilan Jika Kamera Belum Menyala / Izin Ditolak */}
+              {/* Status Kamera Belum Aktif */}
               {!cameraActive && !isStartingCamera && (
-                <div className="absolute inset-0 flex flex-col justify-center items-center text-white bg-gradient-to-b from-gray-950 via-gray-900 to-black rounded-[22px] p-6 text-center z-20 space-y-3">
-                  <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center text-amber-400 mb-1 border border-white/10">
-                    <CameraOff className="w-7 h-7" />
+                <div className="absolute inset-0 flex flex-col justify-center items-center text-white bg-black/60 backdrop-blur-xs rounded-2xl p-6 text-center z-20 space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-amber-400 mb-1 border border-white/10">
+                    <CameraOff className="w-6 h-6" />
                   </div>
-                  <div>
-                    <h3 className="text-sm font-extrabold text-white">Kamera Belum Aktif</h3>
-                    <p className="text-[11px] text-gray-300 mt-1 max-w-[280px]">
-                      {cameraError || 'Aktifkan kamera scanner agar dapat memindai QR code santri dengan cepat dan otomatis.'}
-                    </p>
-                  </div>
+                  <p className="text-xs font-bold text-white">Kamera Belum Aktif</p>
+                  <p className="text-[10px] text-gray-300 max-w-[220px]">
+                    {cameraError || 'Klik tombol di bawah untuk menyalakan kamera scanner'}
+                  </p>
                   <button
                     type="button"
                     onClick={() => startScanner()}
-                    className="mt-2 px-5 py-2.5 rounded-full bg-pesantren-primary hover:bg-[#0c7853] text-white text-xs font-bold shadow-lg transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                    className="mt-1 px-4 py-2 rounded-full bg-pesantren-primary hover:bg-[#0c7853] text-white text-xs font-bold shadow-md transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
                   >
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>Aktifkan Kamera Sekarang</span>
+                    <Play className="w-3.5 h-3.5 fill-white" />
+                    <span>Nyalakan Kamera</span>
                   </button>
-                  <p className="text-[9px] text-gray-400">
-                    Atau gunakan opsi <span className="text-emerald-400 font-semibold">Input Manual / Barcode Gun</span> di atas
-                  </p>
                 </div>
               )}
             </div>
 
-            {/* Error Message Overlay */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-3 flex flex-col justify-center items-center text-center text-red-500 bg-white/95 backdrop-blur-sm p-6 rounded-[22px] z-30 shadow-md border border-red-100"
-                >
-                  <XCircle className="w-12 h-12 mb-2 text-red-500" />
-                  <p className="text-sm font-bold text-gray-800">{error}</p>
-                  <p className="text-[11px] text-gray-500 mt-1 max-w-[260px]">
-                    Pastikan server backend di komputer host menyala dan terhubung pada jaringan yang sama.
-                  </p>
-                  <div className="flex items-center gap-2 mt-4">
-                    <button
-                      onClick={() => { setError(null); }}
-                      className="px-4 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition-colors cursor-pointer"
-                    >
-                      Tutup
-                    </button>
-                    <button
-                      onClick={() => { setError(null); setShowServerModal(true); }}
-                      className="px-4 py-1.5 rounded-full bg-pesantren-primary text-white text-xs font-bold shadow-md hover:bg-[#0c7853] transition-colors flex items-center gap-1 cursor-pointer"
-                    >
-                      <Settings className="w-3.5 h-3.5" />
-                      <span>Atur IP Server</span>
-                    </button>
-                  </div>
-                </motion.div>
+            {/* Opsi Input Manual Halus (Accordion tanpa memenuhi layar) */}
+            <div className="mt-2 text-center">
+              <button
+                type="button"
+                onClick={() => setShowManualInput(!showManualInput)}
+                className="text-[11px] text-gray-500 hover:text-pesantren-primary font-medium underline cursor-pointer"
+              >
+                {showManualInput ? 'Tutup Input Manual' : 'Kamera bermasalah? Masukkan NISN secara manual'}
+              </button>
+
+              {showManualInput && (
+                <form onSubmit={handleManualSubmit} className="mt-2 flex gap-2 max-w-[320px] mx-auto">
+                  <input
+                    type="text"
+                    placeholder="Ketik NISN (contoh: 00943523)..."
+                    value={manualCode}
+                    onChange={(e) => setManualCode(e.target.value)}
+                    className="flex-1 text-xs px-3 py-1.5 bg-white border border-gray-300 rounded-xl focus:outline-none focus:border-pesantren-primary font-medium"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!manualCode.trim() || isProcessing}
+                    className="px-3.5 py-1.5 bg-pesantren-primary text-white rounded-xl text-xs font-bold hover:bg-[#0c7853] disabled:opacity-50 cursor-pointer"
+                  >
+                    Absen
+                  </button>
+                </form>
               )}
-            </AnimatePresence>
+            </div>
           </div>
+
+          {/* Error Message Overlay */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 flex flex-col justify-center items-center text-center text-red-500 bg-white/95 backdrop-blur-sm p-6 rounded-2xl z-20"
+              >
+                <XCircle className="w-12 h-12 mb-2 text-red-500" />
+                <p className="text-sm font-bold text-gray-800">{error}</p>
+                <button
+                  onClick={() => { setError(null); }}
+                  className="mt-3 text-xs font-bold text-pesantren-primary underline cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
-        {/* Modal Hasil Presensi Presisi Tinggi (Waktu Detail Jam, Menit, Detik, Milidetik) */}
+        {/* Modal Hasil Absensi Sesuai Tampilan Asli + Waktu Digital Detail */}
         <AnimatePresence>
           {scanResult && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-md overflow-y-auto"
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-pesantren-primary/40 backdrop-blur-md"
             >
               <motion.div
-                initial={{ scale: 0.92, y: 15 }}
+                initial={{ scale: 0.85, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.92, y: 15 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="bg-white rounded-[28px] shadow-2xl p-5 sm:p-6 max-w-sm sm:max-w-md w-full text-center border border-gray-100 relative overflow-hidden my-auto"
+                exit={{ scale: 0.85, y: 15 }}
+                className="bg-white rounded-[2rem] shadow-2xl p-6 sm:p-7 max-w-sm w-full text-center relative overflow-hidden border border-gray-100"
               >
-                {/* Garis Progress Hitung Mundur Otomatis */}
+                {/* Progress bar countdown auto-close */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gray-100">
                   <motion.div
                     initial={{ width: "100%" }}
                     animate={{ width: "0%" }}
-                    transition={{ duration: currentSpeed.sec, ease: "linear" }}
+                    transition={{ duration: 3.0, ease: "linear" }}
                     className={`h-full ${scanResult.alreadyScanned ? 'bg-amber-500' : 'bg-emerald-500'}`}
                   />
                 </div>
 
-                {/* Tombol Tutup Silang di Kanan Atas */}
+                {/* Tombol silang tutup */}
                 <button
                   onClick={handleCloseResult}
-                  className="absolute top-3 right-3 p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                  aria-label="Tutup"
+                  className="absolute top-3 right-3 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
 
-                {/* Ikon & Badge Status Absensi */}
-                <div className="flex flex-col items-center mt-1 mb-3">
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-2 shadow-sm ${scanResult.alreadyScanned
-                    ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                    }`}>
-                    {scanResult.alreadyScanned ? (
-                      <Clock className="w-7 h-7" />
-                    ) : (
-                      <CheckCircle2 className="w-7 h-7" />
-                    )}
-                  </div>
+                {/* Ikon Status */}
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
+                  scanResult.alreadyScanned
+                    ? 'bg-amber-100 text-amber-600'
+                    : 'bg-emerald-100 text-emerald-600'
+                }`}>
+                  {scanResult.alreadyScanned ? (
+                    <Clock className="w-8 h-8" />
+                  ) : (
+                    <CheckCircle2 className="w-8 h-8" />
+                  )}
+                </div>
 
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                {/* Judul & Status Badge */}
+                <h3 className="text-xl sm:text-2xl font-black text-gray-800 mb-1">
+                  {scanResult.alreadyScanned ? 'Data Absensi Ditemukan' : 'Berhasil Hadir!'}
+                </h3>
+
+                <div className="mb-4">
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                     scanResult.alreadyScanned
                       ? 'bg-amber-100 text-amber-800'
                       : scanResult.isLate
-                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                      : 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800'
                   }`}>
                     <Sparkles className="w-3 h-3" />
-                    {scanResult.alreadyScanned 
-                      ? 'SUDAH ABSEN HARI INI' 
-                      : scanResult.isLate 
-                      ? 'HADIR TERLAMBAT (LEWAT 07:15)' 
-                      : 'BERHASIL HADIR (TEPAT WAKTU)'}
-                  </span>
-
-                  <h3 className="text-lg sm:text-xl font-black text-gray-800 mt-1">
-                    {scanResult.alreadyScanned ? 'Data Absensi Ditemukan' : 'Absensi Berhasil!'}
-                  </h3>
-                  <p className="text-[11px] text-gray-500">
                     {scanResult.alreadyScanned
-                      ? 'Santri telah melakukan scan absensi sebelumnya'
-                      : 'Waktu presisi santri berhasil dicatat ke sistem'}
-                  </p>
+                      ? 'SUDAH ABSEN HARI INI'
+                      : scanResult.isLate
+                        ? 'HADIR TERLAMBAT (LEWAT 07:15)'
+                        : 'HADIR TEPAT WAKTU'}
+                  </span>
                 </div>
 
-                {/* FITUR UTAMA: WAKTU PRESISI DETAIL (JAM, MENIT, DETIK, MILIDETIK) */}
-                <div className="bg-gradient-to-br from-[#0a271e] via-[#0d362a] to-[#061e16] rounded-2xl p-4 text-white shadow-md border border-emerald-500/30 mb-4 text-left relative overflow-hidden">
-                  <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-emerald-300/80 mb-2.5">
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-emerald-400" />
-                      Waktu Presisi Absensi
+                {/* Waktu Presisi Digital: Jam : Menit : Detik . Milidetik */}
+                <div className="bg-[#0e3b2e] rounded-xl p-3 text-white mb-4 border border-emerald-500/20 shadow-xs">
+                  <div className="flex items-center justify-between text-[9px] font-bold text-emerald-300/80 mb-1.5 uppercase tracking-wider">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-emerald-400" />
+                      Waktu Presisi
                     </span>
-                    <span className="flex items-center gap-1 bg-emerald-500/20 px-2 py-0.5 rounded-full text-[9px] text-emerald-300 font-mono">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                      WIB (UTC+7)
-                    </span>
+                    <span className="font-mono text-emerald-300">WIB (UTC+7)</span>
                   </div>
-
-                  {/* Digital Clock Breakdown: Jam : Menit : Detik . Milidetik */}
-                  <div className="grid grid-cols-4 gap-1.5 items-center">
-                    {/* JAM */}
-                    <div className="bg-black/40 backdrop-blur-xs border border-white/10 rounded-xl py-2 px-1 text-center">
-                      <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white block">
-                        {scanResult.hours}
-                      </span>
-                      <span className="block text-[8px] font-bold tracking-widest text-emerald-300/80 uppercase mt-0.5">
-                        JAM
-                      </span>
+                  <div className="grid grid-cols-4 gap-1 text-center font-mono">
+                    <div className="bg-black/40 rounded-lg py-1">
+                      <span className="text-xl font-black text-white">{scanResult.hours}</span>
+                      <span className="block text-[7px] text-emerald-300 font-sans uppercase">Jam</span>
                     </div>
-
-                    {/* MENIT */}
-                    <div className="bg-black/40 backdrop-blur-xs border border-white/10 rounded-xl py-2 px-1 text-center">
-                      <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white block">
-                        {scanResult.minutes}
-                      </span>
-                      <span className="block text-[8px] font-bold tracking-widest text-emerald-300/80 uppercase mt-0.5">
-                        MENIT
-                      </span>
+                    <div className="bg-black/40 rounded-lg py-1">
+                      <span className="text-xl font-black text-white">{scanResult.minutes}</span>
+                      <span className="block text-[7px] text-emerald-300 font-sans uppercase">Mnt</span>
                     </div>
-
-                    {/* DETIK */}
-                    <div className="bg-black/40 backdrop-blur-xs border border-emerald-500/40 rounded-xl py-2 px-1 text-center shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                      <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-300 block">
-                        {scanResult.seconds}
-                      </span>
-                      <span className="block text-[8px] font-bold tracking-widest text-emerald-300 uppercase mt-0.5">
-                        DETIK
-                      </span>
+                    <div className="bg-black/40 rounded-lg py-1">
+                      <span className="text-xl font-black text-emerald-300">{scanResult.seconds}</span>
+                      <span className="block text-[7px] text-emerald-300 font-sans uppercase">Dtk</span>
                     </div>
-
-                    {/* MILIDETIK (HIGHLIGHT) */}
-                    <div className="bg-emerald-950/80 border border-amber-400/50 rounded-xl py-2 px-1 text-center shadow-[0_0_12px_rgba(251,191,36,0.25)]">
-                      <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-amber-300 block">
-                        {scanResult.milliseconds}
-                      </span>
-                      <span className="block text-[8px] font-black tracking-widest text-amber-300 uppercase mt-0.5">
-                        MS
-                      </span>
+                    <div className="bg-black/40 rounded-lg py-1 border border-amber-400/40">
+                      <span className="text-xl font-black text-amber-300">{scanResult.milliseconds}</span>
+                      <span className="block text-[7px] text-amber-300 font-sans uppercase">Ms</span>
                     </div>
                   </div>
-
-                  {/* Tanggal & Full Time String Footer */}
-                  <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between text-[11px] text-emerald-200/90">
-                    <span className="flex items-center gap-1.5 font-medium">
-                      <Calendar className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] text-emerald-200">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-emerald-400" />
                       {scanResult.dateFull}
                     </span>
-                    <span className="font-mono text-[10px] font-bold bg-white/10 px-2 py-0.5 rounded text-white tracking-wider">
-                      {scanResult.hours}:{scanResult.minutes}:{scanResult.seconds}.{scanResult.milliseconds}
+                    <span className="font-mono text-[9px] font-bold bg-white/10 px-1.5 py-0.5 rounded">
+                      {scanResult.hours}:{scanResult.minutes}:{scanResult.seconds}
                     </span>
                   </div>
                 </div>
 
-                {/* Detail Santri Card */}
-                <div className="bg-[#F8F9FA] rounded-2xl p-4 space-y-3 text-left border border-gray-100 mb-4">
-                  <div className="flex items-center gap-3 pb-2.5 border-b border-gray-200/60">
-                    <div className="w-9 h-9 rounded-xl bg-pesantren-primary/10 text-pesantren-primary flex items-center justify-center font-bold text-sm shrink-0">
-                      <User className="w-5 h-5" />
+                {/* Detail Santri Sesuai Layout Awal */}
+                <div className="bg-pesantren-light rounded-2xl p-4 space-y-3 text-left border border-pesantren-emerald/10 mb-4">
+                  <div className="flex items-center gap-2.5 pb-2 border-b border-gray-200/50">
+                    <div className="w-8 h-8 rounded-lg bg-pesantren-primary/10 text-pesantren-primary flex items-center justify-center font-bold text-xs shrink-0">
+                      <User className="w-4 h-4" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">
-                        {scanResult.isTeacher ? 'Nama Guru / Tenaga Pengajar' : 'Nama Lengkap Santri'}
+                        {scanResult.isTeacher ? 'Nama Guru / Tendik' : 'Nama Santri'}
                       </p>
                       <p className="text-base font-extrabold text-gray-800 leading-tight truncate">
                         {scanResult.name}
@@ -1090,246 +772,65 @@ const ScanPage = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-white p-2.5 rounded-xl border border-gray-100">
+                    <div>
                       <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">
                         {scanResult.isTeacher ? 'Jabatan' : 'Kelas'}
                       </p>
-                      <p className="text-xs font-bold text-gray-800 mt-0.5">{scanResult.class}</p>
+                      <p className="font-bold text-gray-700 mt-0.5">{scanResult.class}</p>
                     </div>
-                    <div className="bg-white p-2.5 rounded-xl border border-gray-100">
+                    <div className="text-right">
                       <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">
                         {scanResult.isTeacher ? 'NIP' : 'NISN'}
                       </p>
-                      <p className="text-xs font-bold text-gray-800 font-mono mt-0.5">{scanResult.nisn}</p>
+                      <p className="font-bold text-gray-700 font-mono mt-0.5">{scanResult.nisn}</p>
                     </div>
                   </div>
 
-                  {/* Status Presensi & Info Notifikasi */}
-                  <div className="pt-1 flex items-center justify-between text-[10px]">
-                    {scanResult.isLate ? (
-                      <span className="flex items-center gap-1 text-amber-700 font-bold bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                        <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        Status: Terlambat (Lewat 07:15 WIB)
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        Status: Hadir Tepat Waktu
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1 text-gray-500 font-mono">
-                      <Hash className="w-3 h-3 text-gray-400" />
-                      Log #{scanResult.milliseconds}
+                  <div className="pt-2 border-t border-gray-200/50 flex items-center justify-between text-[10px]">
+                    <span className="flex items-center gap-1 text-emerald-700 font-bold">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      Status Terverifikasi
                     </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 bg-emerald-50/70 p-2 rounded-xl border border-emerald-100/70">
-                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="font-medium">
-                      Notifikasi WhatsApp otomatis terkirim dengan jam & detik presisi.
+                    <span className="text-gray-400 font-mono">
+                      #{scanResult.milliseconds}
                     </span>
                   </div>
                 </div>
 
-                {/* Tombol Utama Lanjut Scan Santri Berikutnya */}
+                {/* Tombol Lanjut Scan Santri Berikutnya */}
                 <button
                   onClick={handleCloseResult}
-                  className="w-full py-3 px-4 rounded-xl bg-pesantren-primary hover:bg-[#0c7853] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer"
+                  className="w-full py-2.5 px-4 rounded-xl bg-pesantren-primary hover:bg-[#0c7853] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3.5 h-3.5" />
                   <span>Scan Santri Berikutnya ({countdown}s)</span>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-3.5 h-3.5" />
                 </button>
-
-                <p className="text-[9px] text-gray-400 mt-2">
-                  Tekan <span className="font-bold text-gray-600">[Spasi]</span> atau klik tombol untuk langsung scan santri berikutnya
-                </p>
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Modal Pengaturan Alamat Server IP (Untuk Akses dari HP) */}
-        <AnimatePresence>
-          {showServerModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
-            >
-              <motion.div
-                initial={{ scale: 0.95, y: 10 }}
-                animate={{ scale: 1, y: 0 }}
-                exit={{ scale: 0.95, y: 10 }}
-                className="bg-white rounded-[24px] shadow-2xl p-6 max-w-sm w-full border border-gray-100 space-y-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-emerald-50 text-pesantren-primary rounded-xl">
-                      <Wifi className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-extrabold text-gray-800">Koneksi Server Backend</h3>
-                      <p className="text-[10px] text-gray-400">Atur agar HP dapat mengirim data scan ke laptop</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setShowServerModal(false)}
-                    className="p-1 rounded-full text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[11px] font-bold text-gray-700 block">
-                    URL / IP Server Backend:
-                  </label>
-                  <input
-                    type="text"
-                    value={serverUrlInput}
-                    onChange={(e) => setServerUrlInput(e.target.value)}
-                    placeholder="http://192.168.100.4:3001"
-                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:border-pesantren-primary"
-                  />
-                  <p className="text-[9px] text-gray-400">
-                    Jika membuka di HP melalui Wi-Fi, masukkan IP laptop Anda: <span className="font-mono font-bold text-emerald-600">http://192.168.100.4:3001</span>
-                  </p>
-                </div>
-
-                {/* Preset Pilihan Cepat */}
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Pilihan Cepat:</span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => { setServerUrlInput('http://192.168.100.4:3001'); handleTestServer('http://192.168.100.4:3001'); }}
-                      className="text-[10px] font-bold p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-left transition-colors cursor-pointer"
-                    >
-                      💻 Wi-Fi Laptop
-                      <span className="block font-mono text-[9px] text-gray-500 font-normal">192.168.100.4:3001</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setServerUrlInput('http://localhost:3001'); handleTestServer('http://localhost:3001'); }}
-                      className="text-[10px] font-bold p-2 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 text-left transition-colors cursor-pointer"
-                    >
-                      🏠 Komputer Lokal
-                      <span className="block font-mono text-[9px] text-gray-500 font-normal">localhost:3001</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Hasil Uji Koneksi */}
-                {serverTestMsg && (
-                  <div className={`p-2.5 rounded-xl text-[10px] font-semibold ${
-                    serverTestMsg.startsWith('✅') ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'
-                  }`}>
-                    {serverTestMsg}
-                  </div>
-                )}
-
-                {/* Tombol Aksi */}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => handleTestServer()}
-                    disabled={serverTesting}
-                    className="flex-1 py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    {serverTesting ? 'Menguji...' : 'Uji Koneksi'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveServerUrl}
-                    className="flex-1 py-2 px-3 bg-pesantren-primary hover:bg-[#0c7853] text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer"
-                  >
-                    Simpan & Terapkan
-                  </button>
-                </div>
-
-                {localStorage.getItem('backend_url') && (
-                  <button
-                    type="button"
-                    onClick={handleResetServerUrl}
-                    className="text-[10px] text-red-500 hover:underline block mx-auto font-semibold cursor-pointer"
-                  >
-                    Reset Alamat Server ke Default
-                  </button>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Footer Link & QR Buka di Smartphone */}
+        {/* Footer Sesuai Tampilan Asli */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="w-full flex flex-col items-center gap-2 mt-1"
+          transition={{ delay: 0.3 }}
+          className="pt-2 flex flex-col items-center gap-4 w-full"
         >
           <Link
             to="/cek"
-            className="inline-flex items-center gap-1.5 bg-white/95 border border-gray-200/80 px-4 py-1.5 rounded-full text-gray-600 hover:text-pesantren-primary text-xs font-bold transition-all shadow-xs"
+            className="inline-flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-pesantren-primary/10 px-4 py-2 rounded-full text-pesantren-primary hover:text-pesantren-emerald text-xs font-bold transition-all shadow-xs"
           >
-            <Search className="w-3.5 h-3.5 text-pesantren-primary" />
+            <Search className="w-3.5 h-3.5" />
             Wali Murid? Cek Kehadiran Di Sini
           </Link>
 
-          {/* Kotak QR Code Buka di Smartphone */}
-          <div className="w-full bg-white p-3 rounded-2xl shadow-md border border-gray-100 space-y-2">
-            <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
-              <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
-                <Smartphone className="w-3.5 h-3.5 text-pesantren-primary" />
-                Buka & Scan dari HP (Smartphone):
-              </span>
-              
-              {/* Tab Toggle: Wi-Fi vs GitHub Link */}
-              <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setPhoneQrType('wifi')}
-                  className={`text-[9px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                    phoneQrType === 'wifi' ? 'bg-white text-pesantren-primary shadow-xs' : 'text-gray-500'
-                  }`}
-                >
-                  📶 Wi-Fi
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPhoneQrType('github')}
-                  className={`text-[9px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                    phoneQrType === 'github' ? 'bg-white text-pesantren-primary shadow-xs' : 'text-gray-500'
-                  }`}
-                >
-                  🌐 GitHub
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-0.5">
-              <div className="p-1 bg-white border border-gray-200 rounded-xl shrink-0 shadow-2xs">
-                <QRCodeSVG value={currentMobileTarget} size={56} level="M" />
-              </div>
-              <div className="min-w-0 flex-1 text-left">
-                <p className="text-[10px] font-bold text-gray-800 truncate">
-                  {phoneQrType === 'wifi' ? 'Jaringan Wi-Fi Pesantren' : 'Link Web GitHub Pages'}
-                </p>
-                <p className="text-[9px] text-gray-400 font-mono truncate mt-0.5 select-all">
-                  {currentMobileTarget}
-                </p>
-                <a
-                  href={currentMobileTarget}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[9px] text-pesantren-primary font-bold hover:underline mt-1"
-                >
-                  Buka Tautan <ExternalLink className="w-2.5 h-2.5" />
-                </a>
-              </div>
-            </div>
+          <div className="bg-white p-3.5 rounded-2xl shadow-lg border border-gray-100 flex flex-col items-center gap-2">
+            <QRCodeSVG value={qrDisplayUrl} size={84} />
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+              Scan untuk Buka di HP
+            </p>
           </div>
         </motion.div>
       </div>
