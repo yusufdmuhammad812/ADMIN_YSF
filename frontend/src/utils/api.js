@@ -33,8 +33,8 @@ export const getBaseUrl = () => {
     return `http://${hostname}:3001`;
   }
 
-  // 5. Jika diakses dari domain online (GitHub Pages / Vercel):
-  // Default ke IP Wi-Fi server lokal agar HP yang terkoneksi Wi-Fi pesantren langsung terhubung
-  const DEFAULT_LOCAL_IP = '192.168.100.4';
-  return `http://${DEFAULT_LOCAL_IP}:3001`;
+  // 5. Jika diakses dari domain online HTTPS (GitHub Pages):
+  // Menghubungkan langsung ke server backend via HTTPS tunnel aman tanpa Mixed Content error
+  const LIVE_HTTPS_BACKEND = 'https://55d41f36a96464.lhr.life';
+  return LIVE_HTTPS_BACKEND;
 };

@@ -68,10 +68,32 @@ app.post('/api/scan', async (req, res) => {
     }
 
     try {
-        // 1. Cari siswa berdasarkan qr_code
-        const student = await prisma.student.findUnique({
-            where: { qr_code }
+        const cleanCode = qr_code.trim();
+        const noLeadingZeros = cleanCode.replace(/^0+/, '');
+
+        // 1. Cari siswa berdasarkan qr_code, nisn, atau id (dengan toleransi leading zeros)
+        let student = await prisma.student.findFirst({
+            where: {
+                OR: [
+                    { qr_code: cleanCode },
+                    { nisn: cleanCode },
+                    { qr_code: noLeadingZeros },
+                    { nisn: noLeadingZeros },
+                    { id: cleanCode }
+                ]
+            }
         });
+
+        if (!student && noLeadingZeros) {
+            student = await prisma.student.findFirst({
+                where: {
+                    OR: [
+                        { qr_code: { contains: noLeadingZeros } },
+                        { nisn: { contains: noLeadingZeros } }
+                    ]
+                }
+            });
+        }
 
         if (student) {
             // Cek apakah sudah absen hari ini
@@ -156,9 +178,28 @@ app.post('/api/scan', async (req, res) => {
         }
 
         // 2. Jika tidak ditemukan sebagai siswa, cari sebagai Guru/Staff!
-        const teacher = await prisma.teacher.findUnique({
-            where: { qr_code }
+        let teacher = await prisma.teacher.findFirst({
+            where: {
+                OR: [
+                    { qr_code: cleanCode },
+                    { nip: cleanCode },
+                    { qr_code: noLeadingZeros },
+                    { nip: noLeadingZeros },
+                    { id: cleanCode }
+                ]
+            }
         });
+
+        if (!teacher && noLeadingZeros) {
+            teacher = await prisma.teacher.findFirst({
+                where: {
+                    OR: [
+                        { qr_code: { contains: noLeadingZeros } },
+                        { nip: { contains: noLeadingZeros } }
+                    ]
+                }
+            });
+        }
 
         if (teacher) {
             const today = new Date();

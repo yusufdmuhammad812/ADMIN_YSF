@@ -213,12 +213,35 @@ const ScanPage = () => {
     // 2. Jika backend offline / Mixed Content diakses dari HP via GitHub Pages, gunakan data santri fallback
     if (!attendanceData) {
       const cleanCode = trimmedCode.toLowerCase();
-      const studentMatch = fallbackPersonnel.students.find(
-        (s) => s.nisn.toLowerCase() === cleanCode || (s.qr_code && s.qr_code.toLowerCase() === cleanCode)
-      );
-      const teacherMatch = !studentMatch && fallbackPersonnel.teachers.find(
-        (t) => t.nip.toLowerCase() === cleanCode || (t.qr_code && t.qr_code.toLowerCase() === cleanCode)
-      );
+      const noZeros = cleanCode.replace(/^0+/, '');
+
+      const studentMatch = fallbackPersonnel.students.find((s) => {
+        const sNisn = (s.nisn || '').toLowerCase();
+        const sQr = (s.qr_code || '').toLowerCase();
+        const sNisnNoZeros = sNisn.replace(/^0+/, '');
+        const sQrNoZeros = sQr.replace(/^0+/, '');
+
+        return (
+          sNisn === cleanCode ||
+          sQr === cleanCode ||
+          (noZeros && (sNisnNoZeros === noZeros || sQrNoZeros === noZeros)) ||
+          (noZeros.length >= 4 && (sNisn.includes(noZeros) || cleanCode.includes(sNisn)))
+        );
+      });
+
+      const teacherMatch = !studentMatch && fallbackPersonnel.teachers.find((t) => {
+        const tNip = (t.nip || '').toLowerCase();
+        const tQr = (t.qr_code || '').toLowerCase();
+        const tNipNoZeros = tNip.replace(/^0+/, '');
+        const tQrNoZeros = tQr.replace(/^0+/, '');
+
+        return (
+          tNip === cleanCode ||
+          tQr === cleanCode ||
+          (noZeros && (tNipNoZeros === noZeros || tQrNoZeros === noZeros)) ||
+          (noZeros.length >= 2 && (tNip.includes(noZeros) || cleanCode.includes(tNip)))
+        );
+      });
 
       // Cek apakah sudah absen hari ini di memori lokal
       const todayKey = `absensi_harian_${dateObj.toISOString().slice(0, 10)}`;
@@ -236,7 +259,7 @@ const ScanPage = () => {
       }
 
       const person = studentMatch || teacherMatch || {
-        name: `Santri / Tamu (${trimmedCode})`,
+        name: trimmedCode.match(/^[0-9]+$/) ? `Siswa (${trimmedCode})` : trimmedCode,
         nisn: trimmedCode,
         class: 'SMP-HT'
       };
@@ -267,7 +290,7 @@ const ScanPage = () => {
     setLastAttendance(attendanceData);
     try {
       localStorage.setItem('last_attendance_result', JSON.stringify(attendanceData));
-    } catch {}
+    } catch { }
     setIsProcessing(false);
     setManualCode('');
     setShowManualInput(false);
@@ -539,9 +562,8 @@ const ScanPage = () => {
                   type="button"
                   onClick={handleToggleTorch}
                   title="Lampu Senter"
-                  className={`p-1.5 rounded-full border shadow-2xs transition-colors cursor-pointer ${
-                    torchOn ? 'bg-amber-400 text-gray-900 border-amber-500' : 'bg-white text-gray-500 border-gray-200'
-                  }`}
+                  className={`p-1.5 rounded-full border shadow-2xs transition-colors cursor-pointer ${torchOn ? 'bg-amber-400 text-gray-900 border-amber-500' : 'bg-white text-gray-500 border-gray-200'
+                    }`}
                 >
                   <Flashlight className="w-3.5 h-3.5" />
                 </button>
@@ -700,13 +722,12 @@ const ScanPage = () => {
                   Hasil Presensi Terakhir:
                 </span>
               </div>
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                lastAttendance.alreadyScanned
+              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${lastAttendance.alreadyScanned
                   ? 'bg-amber-100 text-amber-800'
                   : lastAttendance.isLate
                     ? 'bg-amber-100 text-amber-900 border border-amber-300'
                     : 'bg-emerald-100 text-emerald-800'
-              }`}>
+                }`}>
                 {lastAttendance.alreadyScanned
                   ? 'Sudah Absen Hari Ini'
                   : lastAttendance.isLate
@@ -770,11 +791,10 @@ const ScanPage = () => {
                 </button>
 
                 {/* Ikon Status */}
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${
-                  scanResult.alreadyScanned
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${scanResult.alreadyScanned
                     ? 'bg-amber-100 text-amber-600'
                     : 'bg-emerald-100 text-emerald-600'
-                }`}>
+                  }`}>
                   {scanResult.alreadyScanned ? (
                     <Clock className="w-8 h-8" />
                   ) : (
@@ -788,13 +808,12 @@ const ScanPage = () => {
                 </h3>
 
                 <div className="mb-4">
-                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                    scanResult.alreadyScanned
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${scanResult.alreadyScanned
                       ? 'bg-amber-100 text-amber-800'
                       : scanResult.isLate
                         ? 'bg-amber-100 text-amber-900 border border-amber-300'
                         : 'bg-emerald-100 text-emerald-800'
-                  }`}>
+                    }`}>
                     <Sparkles className="w-3 h-3" />
                     {scanResult.alreadyScanned
                       ? 'SUDAH ABSEN HARI INI'
