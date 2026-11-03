@@ -1,7 +1,7 @@
 const XLSX = require('xlsx');
 
 const data = [
-  { Nama: 'ADIAS FERDIAN NAWAWI', NISN: '0126450562', Kelas: '8A', No_WA: '6283148100602' },
+  { Nama: 'ADIAS FERDIAN NAWAWI', NISN: '0126450562', Kelas: '8A', No_WA: '62895326243945' },
   { Nama: 'ADINDA RAHMAWATI', NISN: '0138131948', Kelas: '7A', No_WA: '6283148100602' },
   { Nama: 'AGUNG FATHEKHA', NISN: '0086704048', Kelas: '9A', No_WA: '6283148100602' },
   { Nama: 'ALDI MULFAIS', NISN: '0121071622', Kelas: '7A', No_WA: '6283148100602' },
@@ -47,6 +47,24 @@ XLSX.utils.book_append_sheet(workbook, worksheet, "Data Santri");
 const fs = require('fs');
 const path = require('path');
 const outputPath = path.join(__dirname, '..', 'Data_Santri_Import.xlsx');
+const publicPath = path.join(__dirname, 'public', 'Data_Santri_Import.xlsx');
+const distPath = path.join(__dirname, 'dist', 'Data_Santri_Import.xlsx');
 
 XLSX.writeFile(workbook, outputPath);
 console.log('File created at ' + outputPath);
+
+try {
+  XLSX.writeFile(workbook, publicPath);
+  console.log('File copied to ' + publicPath);
+} catch (e) {
+  console.warn('Could not write to public:', e.message);
+}
+
+try {
+  if (fs.existsSync(path.join(__dirname, 'dist'))) {
+    XLSX.writeFile(workbook, distPath);
+    console.log('File copied to ' + distPath);
+  }
+} catch (e) {
+  console.warn('Could not write to dist:', e.message);
+}

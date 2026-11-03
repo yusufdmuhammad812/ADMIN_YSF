@@ -36,7 +36,7 @@ const AdminLayout = ({ children }) => {
   const menuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/admin' },
     { icon: QrCode, label: 'Absensi Scan', path: '/admin/scan' },
-    { icon: Printer, label: 'Cetak QR', path: '/admin/print-qr' },
+    { icon: Printer, label: 'Cetak & Unduh Barcode', path: '/admin/print-qr' },
     { icon: Users, label: 'Data Siswa', path: '/admin/students' },
     { icon: Contact, label: 'Data Guru', path: '/admin/teachers' },
     { icon: FileText, label: 'Rekap Laporan', path: '/admin/reports' },

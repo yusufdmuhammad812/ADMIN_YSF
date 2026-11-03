@@ -152,8 +152,13 @@ const ParentPortalPage = () => {
                           <div className="flex items-center gap-4 mt-4 w-full">
                             <div className="flex-1 bg-gray-50 p-3 rounded-2xl border border-gray-100 text-center">
                               <Clock className="w-4 h-4 mx-auto mb-1 text-gray-400" />
-                              <p className="text-[10px] text-gray-500 uppercase">Jam</p>
-                              <p className="font-bold text-gray-800 text-sm">{new Date(result.attendance.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>
+                              <p className="text-[10px] text-gray-500 uppercase">Waktu Presisi</p>
+                              <p className="font-bold text-gray-800 text-xs sm:text-sm font-mono">
+                                {new Date(result.attendance.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                                <span className="text-[10px] text-emerald-600 font-bold ml-1">
+                                  .{String(new Date(result.attendance.timestamp).getMilliseconds()).padStart(3, '0')}
+                                </span>
+                              </p>
                             </div>
                             <div className="flex-1 bg-gray-50 p-3 rounded-2xl border border-gray-100 text-center">
                               <Calendar className="w-4 h-4 mx-auto mb-1 text-gray-400" />

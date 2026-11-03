@@ -185,17 +185,56 @@ const ReportsPage = () => {
                         <p className="text-sm font-medium text-gray-600">{item.class}</p>
                       </td>
                       <td className="py-4 px-2 text-center">
-                        <p className="text-sm font-bold text-[#2B3674]">
-                           {new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }).replace(/\./g, ':')}
-                        </p>
+                        <div className="inline-flex items-center gap-1">
+                          <span className="text-xs font-bold text-[#2B3674] font-mono">
+                            {new Date(item.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':')}
+                          </span>
+                          <span className="text-[9px] font-mono text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                            .{String(new Date(item.timestamp).getMilliseconds()).padStart(3, '0')}
+                          </span>
+                        </div>
                       </td>
                       <td className="py-4 px-2 text-center">
                         <p className="text-sm font-medium text-gray-300">-</p>
                       </td>
                       <td className="py-4 px-2 text-right">
-                        <span className="px-3 py-1 bg-emerald-50 text-[9px] font-bold text-emerald-500 rounded-lg uppercase">
-                          HADIR
-                        </span>
+                        {(() => {
+                          const status = item.status || (() => {
+                            if (!item.timestamp) return 'TIDAK ABSEN';
+                            const d = new Date(item.timestamp);
+                            const formatter = new Intl.DateTimeFormat('en-US', {
+                              timeZone: 'Asia/Jakarta',
+                              hour: 'numeric',
+                              minute: 'numeric',
+                              second: 'numeric',
+                              hour12: false
+                            });
+                            const parts = formatter.formatToParts(d);
+                            const h = parseInt(parts.find(p => p.type === 'hour')?.value || 0, 10);
+                            const m = parseInt(parts.find(p => p.type === 'minute')?.value || 0, 10);
+                            const s = parseInt(parts.find(p => p.type === 'second')?.value || 0, 10);
+                            return (h > 7 || (h === 7 && (m > 15 || (m === 15 && s > 0)))) ? 'TERLAMBAT' : 'TEPAT WAKTU';
+                          })();
+
+                          if (status === 'TERLAMBAT') {
+                            return (
+                              <span className="px-2.5 py-1 bg-amber-50 text-[9px] font-bold text-amber-600 rounded-lg uppercase border border-amber-200">
+                                TERLAMBAT
+                              </span>
+                            );
+                          } else if (status === 'TIDAK ABSEN') {
+                            return (
+                              <span className="px-2.5 py-1 bg-rose-50 text-[9px] font-bold text-rose-600 rounded-lg uppercase border border-rose-200">
+                                TIDAK ABSEN
+                              </span>
+                            );
+                          }
+                          return (
+                            <span className="px-2.5 py-1 bg-emerald-50 text-[9px] font-bold text-emerald-600 rounded-lg uppercase border border-emerald-200">
+                              TEPAT WAKTU
+                            </span>
+                          );
+                        })()}
                       </td>
                     </tr>
                   ));

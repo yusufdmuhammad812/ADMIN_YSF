@@ -318,7 +318,7 @@ const StudentsPage = () => {
                       </td>
                       <td className="py-4 px-2 text-right">
                         <div className="flex justify-end items-center gap-2">
-                          <button onClick={() => navigate('/admin/print-qr')} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Cetak QR">
+                          <button onClick={() => navigate('/admin/print-qr')} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Cetak / Unduh Barcode">
                             <Printer className="w-4 h-4" />
                           </button>
                           <button onClick={() => openEditModal(student)} className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all" title="Edit Data">

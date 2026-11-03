@@ -7,3 +7,5 @@ dist/
 build/
 .next/
 .vercel/
+wa_session/
+backend/wa_session/

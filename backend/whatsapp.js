@@ -116,10 +116,10 @@ async function connectWhatsApp() {
 // ─── Fungsi: Format Nomor HP ke Format WhatsApp ──────────────────────────────
 function formatPhoneForWA(phone) {
     if (!phone) return null;
-    
+
     // Hapus semua karakter non-digit
     let cleaned = String(phone).replace(/\D/g, '');
-    
+
     // Konversi format lokal ke internasional
     if (cleaned.startsWith('0')) {
         cleaned = '62' + cleaned.slice(1);
@@ -127,7 +127,7 @@ function formatPhoneForWA(phone) {
         cleaned = '62' + cleaned;
     }
     // Kalau sudah mulai dengan 62, biarkan
-    
+
     // Format WhatsApp JID
     return cleaned + '@s.whatsapp.net';
 }
@@ -156,8 +156,8 @@ async function sendWhatsAppMessage(parentPhone, message) {
 }
 
 // ─── Fungsi: Buat Pesan Absensi ──────────────────────────────────────────────
-function buildAttendanceMessage(studentName, studentClass, nisn) {
-    const now = new Date();
+function buildAttendanceMessage(studentName, studentClass, nisn, timestamp = new Date(), status = null) {
+    const now = new Date(timestamp);
     const tanggal = now.toLocaleDateString('id-ID', {
         weekday: 'long',
         day: 'numeric',
@@ -167,18 +167,45 @@ function buildAttendanceMessage(studentName, studentClass, nisn) {
     const jam = now.toLocaleTimeString('id-ID', {
         hour: '2-digit',
         minute: '2-digit',
+        second: '2-digit',
         hour12: false
-    }).replace('.', ':');
+    }).replace(/\./g, ':');
+    const ms = String(now.getMilliseconds()).padStart(3, '0');
+
+    // Cek batas waktu 07:15:00 WIB jika status belum ditentukan
+    let finalStatus = status;
+    if (!finalStatus) {
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'Asia/Jakarta',
+            hour: 'numeric',
+            minute: 'numeric',
+            second: 'numeric',
+            hour12: false
+        });
+        const parts = formatter.formatToParts(now);
+        const hour = parseInt(parts.find(p => p.type === 'hour')?.value || 0, 10);
+        const minute = parseInt(parts.find(p => p.type === 'minute')?.value || 0, 10);
+        const second = parseInt(parts.find(p => p.type === 'second')?.value || 0, 10);
+        const isLate = (hour > 7) || (hour === 7 && (minute > 15 || (minute === 15 && second > 0)));
+        finalStatus = isLate ? 'TERLAMBAT' : 'TEPAT WAKTU';
+    }
+
+    const statusBadge = finalStatus === 'TERLAMBAT'
+        ? '⚠️ *TERLAMBAT* (Melebihi batas 07:15 WIB)'
+        : '✅ *HADIR TEPAT WAKTU*';
 
     return (
         `🕌 *ABSENSI SMP*\n` +
         `Pesantren Hidayatut Tholibin\n\n` +
-        `✅ *${studentName}* telah hadir\n` +
+        `Yth. Orang Tua / Wali,\n` +
+        `Putra/Putri Anda telah melakukan presensi:\n\n` +
+        `👤 Nama: *${studentName}*\n` +
         `📚 Kelas: *${studentClass}*\n` +
         `🆔 NISN: ${nisn}\n` +
-        `📅 ${tanggal}\n` +
-        `🕐 Pukul: *${jam} WIB*\n\n` +
-        `_Pesan otomatis dari Sistem E-Absensi_`
+        `📌 Status: ${statusBadge}\n` +
+        `📅 Tanggal: ${tanggal}\n` +
+        `🕐 Waktu Presisi: *${jam}.${ms} WIB*\n\n` +
+        `_Pesan otomatis dari Sistem E-Absensi Pesantren Hidayatut Tholibin_`
     );
 }
 

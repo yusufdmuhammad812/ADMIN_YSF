@@ -8,10 +8,10 @@ export default {
     extend: {
       colors: {
         pesantren: {
-          primary: "#14532D", // Dark Green
-          emerald: "#10B981", // Emerald Green
+          primary: "#0F8F63", // Primary Green
+          emerald: "#0F8F63", // Primary Green
           gold: "#D4AF37",    // Soft Gold
-          light: "#F0FDF4",   // Soft green bg
+          light: "#F8F9FA",   // Soft light grey
         }
       },
       fontFamily: {
