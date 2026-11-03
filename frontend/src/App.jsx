@@ -14,9 +14,16 @@ const ProtectedRoute = ({ children }) => {
   return isAdmin ? children : <Navigate to="/login" />;
 };
 
+const getBasename = () => {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/ADMIN_YSF')) {
+    return '/ADMIN_YSF';
+  }
+  return '';
+};
+
 function App() {
   return (
-    <Router>
+    <Router basename={getBasename()}>
       <Routes>
         <Route path="/" element={<ScanPage />} />
         <Route path="/cek" element={<ParentPortalPage />} />

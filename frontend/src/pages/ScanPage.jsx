@@ -23,7 +23,13 @@ import {
   Zap,
   Flashlight,
   RefreshCw,
-  Play
+  Play,
+  Wifi,
+  Globe,
+  Settings,
+  ExternalLink,
+  Check,
+  Radio
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
@@ -106,6 +112,16 @@ const ScanPage = () => {
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualCode, setManualCode] = useState('');
 
+  // Pengaturan Koneksi Server HP <-> Laptop
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverUrlInput, setServerUrlInput] = useState(() => getBaseUrl());
+  const [serverStatus, setServerStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+  const [serverTesting, setServerTesting] = useState(false);
+  const [serverTestMsg, setServerTestMsg] = useState('');
+
+  // Target URL QR Code Buka di Smartphone
+  const [phoneQrType, setPhoneQrType] = useState('wifi'); // 'wifi' | 'github'
+
   // Refs untuk menjaga streaming kamera tetap aktif tanpa restart
   const scannerRef = useRef(null);
   const isProcessingRef = useRef(false);
@@ -124,6 +140,24 @@ const ScanPage = () => {
       return false;
     }
   };
+
+  // Cek koneksi server backend saat awal buka
+  useEffect(() => {
+    let isSubscribed = true;
+    const checkServer = async () => {
+      try {
+        const baseUrl = getBaseUrl();
+        const res = await fetch(`${baseUrl}/api/dashboard/stats`, { signal: AbortSignal.timeout(3500) });
+        if (isSubscribed) {
+          setServerStatus(res.ok ? 'online' : 'offline');
+        }
+      } catch {
+        if (isSubscribed) setServerStatus('offline');
+      }
+    };
+    checkServer();
+    return () => { isSubscribed = false; };
+  }, []);
 
   // Tutup modal hasil scan & LANGSUNG aktifkan kembali pendeteksian tanpa jeda restart kamera!
   const handleCloseResult = useCallback(() => {
@@ -240,16 +274,18 @@ const ScanPage = () => {
         timestamp: rawTimestamp,
       });
 
+      setServerStatus('online');
       setManualCode('');
       setShowManualInput(false);
     } catch (err) {
       console.error("Scan processing error:", err);
-      setError("Gagal terhubung ke server");
+      setError("Gagal terhubung ke server backend.");
+      setServerStatus('offline');
       setTimeout(() => {
         setError(null);
         isProcessingRef.current = false;
         setIsProcessing(false);
-      }, 2500);
+      }, 3500);
     } finally {
       setIsProcessing(false);
     }
@@ -470,6 +506,51 @@ const ScanPage = () => {
     }
   };
 
+  // Fungsi Tes & Simpan IP Server Backend
+  const handleTestServer = async (urlToTest) => {
+    setServerTesting(true);
+    setServerTestMsg('');
+    try {
+      let clean = (urlToTest || serverUrlInput).trim();
+      if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+        clean = 'http://' + clean;
+      }
+      const res = await fetch(`${clean}/api/dashboard/stats`, { signal: AbortSignal.timeout(4000) });
+      if (res.ok) {
+        const data = await res.json();
+        setServerTestMsg(`✅ Berhasil Terhubung! Terdeteksi ${data.totalStudents || 0} Santri.`);
+        setServerStatus('online');
+      } else {
+        setServerTestMsg(`⚠️ Server merespons HTTP ${res.status}.`);
+        setServerStatus('offline');
+      }
+    } catch (err) {
+      setServerTestMsg('❌ Gagal: Tidak dapat menghubungi server. Pastikan server backend di laptop/PC sedang berjalan.');
+      setServerStatus('offline');
+    } finally {
+      setServerTesting(false);
+    }
+  };
+
+  const handleSaveServerUrl = () => {
+    let clean = serverUrlInput.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'http://' + clean;
+    }
+    localStorage.setItem('backend_url', clean);
+    setShowServerModal(false);
+    alert(`Alamat server disimpan: ${clean}. Halaman akan memuat ulang.`);
+    window.location.reload();
+  };
+
+  const handleResetServerUrl = () => {
+    localStorage.removeItem('backend_url');
+    setServerUrlInput(getBaseUrl());
+    setShowServerModal(false);
+    alert('Alamat server direset ke otomatis. Halaman akan memuat ulang.');
+    window.location.reload();
+  };
+
   // Global listener untuk USB Barcode / QR Scanner Gun fisik
   useEffect(() => {
     let buffer = '';
@@ -506,6 +587,14 @@ const ScanPage = () => {
     }
   };
 
+  // URL Target untuk Smartphone
+  const localWifiUrl = 'http://192.168.100.4:5173/';
+  const githubRepoUrl = 'https://yusufdmuhammad812.github.io/ADMIN_YSF/';
+  const currentMobileTarget = phoneQrType === 'wifi' ? localWifiUrl : githubRepoUrl;
+
+  const isAccessedFromPhone = typeof window !== 'undefined' && 
+    (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+
   return (
     <div className="min-h-screen islamic-pattern flex flex-col items-center justify-center px-4 py-6 relative overflow-hidden bg-[#F8F9FA]">
       {/* Background Decor santri */}
@@ -525,10 +614,19 @@ const ScanPage = () => {
           animate={{ y: 0, opacity: 1 }}
           className="w-full text-center space-y-1"
         >
-          <h1 className="text-2xl sm:text-3xl font-black text-pesantren-primary tracking-wider flex items-center justify-center gap-2">
-            <QrCode className="w-7 h-7 text-pesantren-gold" />
-            E-ABSENSI
-          </h1>
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-black text-pesantren-primary tracking-wider flex items-center gap-2">
+              <QrCode className="w-7 h-7 text-pesantren-gold" />
+              E-ABSENSI
+            </h1>
+            {/* Indikator HP jika dibuka di smartphone */}
+            {isAccessedFromPhone && (
+              <span className="text-[9px] bg-blue-100 text-blue-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Radio className="w-2.5 h-2.5 animate-pulse text-blue-600" />
+                HP Mode
+              </span>
+            )}
+          </div>
           <p className="text-gray-500 font-bold text-[10px] sm:text-[11px] tracking-[0.22em] uppercase">
             SMP Pesantren Hidayatut Tholibin
           </p>
@@ -583,6 +681,21 @@ const ScanPage = () => {
                   <Flashlight className="w-3.5 h-3.5" />
                 </button>
               )}
+
+              {/* Tombol Pengaturan Server IP */}
+              <button
+                type="button"
+                onClick={() => setShowServerModal(true)}
+                title="Atur Koneksi Server Backend"
+                className={`p-1.5 rounded-full border shadow-2xs transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-semibold ${
+                  serverStatus === 'online'
+                    ? 'bg-white border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+                    : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+                }`}
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">{serverStatus === 'online' ? 'Server OK' : 'Atur IP'}</span>
+              </button>
 
               {/* Toggle Input Manual / Barcode Gun */}
               <button
@@ -795,12 +908,24 @@ const ScanPage = () => {
                 >
                   <XCircle className="w-12 h-12 mb-2 text-red-500" />
                   <p className="text-sm font-bold text-gray-800">{error}</p>
-                  <button
-                    onClick={() => { setError(null); }}
-                    className="mt-4 px-4 py-1.5 rounded-full bg-pesantren-primary text-white text-xs font-bold shadow-md hover:bg-[#0c7853] transition-colors"
-                  >
-                    Lanjutkan Scan
-                  </button>
+                  <p className="text-[11px] text-gray-500 mt-1 max-w-[260px]">
+                    Pastikan server backend di komputer host menyala dan terhubung pada jaringan yang sama.
+                  </p>
+                  <div className="flex items-center gap-2 mt-4">
+                    <button
+                      onClick={() => { setError(null); }}
+                      className="px-4 py-1.5 rounded-full bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200 transition-colors cursor-pointer"
+                    >
+                      Tutup
+                    </button>
+                    <button
+                      onClick={() => { setError(null); setShowServerModal(true); }}
+                      className="px-4 py-1.5 rounded-full bg-pesantren-primary text-white text-xs font-bold shadow-md hover:bg-[#0c7853] transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
+                      <span>Atur IP Server</span>
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -855,18 +980,19 @@ const ScanPage = () => {
                     )}
                   </div>
 
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${scanResult.alreadyScanned
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    scanResult.alreadyScanned
                       ? 'bg-amber-100 text-amber-800'
                       : scanResult.isLate
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                        : 'bg-emerald-100 text-emerald-800'
-                    }`}>
+                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}>
                     <Sparkles className="w-3 h-3" />
-                    {scanResult.alreadyScanned
-                      ? 'SUDAH ABSEN HARI INI'
-                      : scanResult.isLate
-                        ? 'HADIR TERLAMBAT (LEWAT 07:15)'
-                        : 'BERHASIL HADIR (TEPAT WAKTU)'}
+                    {scanResult.alreadyScanned 
+                      ? 'SUDAH ABSEN HARI INI' 
+                      : scanResult.isLate 
+                      ? 'HADIR TERLAMBAT (LEWAT 07:15)' 
+                      : 'BERHASIL HADIR (TEPAT WAKTU)'}
                   </span>
 
                   <h3 className="text-lg sm:text-xl font-black text-gray-800 mt-1">
@@ -1023,12 +1149,126 @@ const ScanPage = () => {
           )}
         </AnimatePresence>
 
+        {/* Modal Pengaturan Alamat Server IP (Untuk Akses dari HP) */}
+        <AnimatePresence>
+          {showServerModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+            >
+              <motion.div
+                initial={{ scale: 0.95, y: 10 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.95, y: 10 }}
+                className="bg-white rounded-[24px] shadow-2xl p-6 max-w-sm w-full border border-gray-100 space-y-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-emerald-50 text-pesantren-primary rounded-xl">
+                      <Wifi className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-gray-800">Koneksi Server Backend</h3>
+                      <p className="text-[10px] text-gray-400">Atur agar HP dapat mengirim data scan ke laptop</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowServerModal(false)}
+                    className="p-1 rounded-full text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-gray-700 block">
+                    URL / IP Server Backend:
+                  </label>
+                  <input
+                    type="text"
+                    value={serverUrlInput}
+                    onChange={(e) => setServerUrlInput(e.target.value)}
+                    placeholder="http://192.168.100.4:3001"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono focus:outline-none focus:border-pesantren-primary"
+                  />
+                  <p className="text-[9px] text-gray-400">
+                    Jika membuka di HP melalui Wi-Fi, masukkan IP laptop Anda: <span className="font-mono font-bold text-emerald-600">http://192.168.100.4:3001</span>
+                  </p>
+                </div>
+
+                {/* Preset Pilihan Cepat */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Pilihan Cepat:</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => { setServerUrlInput('http://192.168.100.4:3001'); handleTestServer('http://192.168.100.4:3001'); }}
+                      className="text-[10px] font-bold p-2 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-left transition-colors cursor-pointer"
+                    >
+                      💻 Wi-Fi Laptop
+                      <span className="block font-mono text-[9px] text-gray-500 font-normal">192.168.100.4:3001</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setServerUrlInput('http://localhost:3001'); handleTestServer('http://localhost:3001'); }}
+                      className="text-[10px] font-bold p-2 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 text-left transition-colors cursor-pointer"
+                    >
+                      🏠 Komputer Lokal
+                      <span className="block font-mono text-[9px] text-gray-500 font-normal">localhost:3001</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hasil Uji Koneksi */}
+                {serverTestMsg && (
+                  <div className={`p-2.5 rounded-xl text-[10px] font-semibold ${
+                    serverTestMsg.startsWith('✅') ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    {serverTestMsg}
+                  </div>
+                )}
+
+                {/* Tombol Aksi */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleTestServer()}
+                    disabled={serverTesting}
+                    className="flex-1 py-2 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-bold transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {serverTesting ? 'Menguji...' : 'Uji Koneksi'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveServerUrl}
+                    className="flex-1 py-2 px-3 bg-pesantren-primary hover:bg-[#0c7853] text-white rounded-xl text-xs font-bold shadow-md transition-all cursor-pointer"
+                  >
+                    Simpan & Terapkan
+                  </button>
+                </div>
+
+                {localStorage.getItem('backend_url') && (
+                  <button
+                    type="button"
+                    onClick={handleResetServerUrl}
+                    className="text-[10px] text-red-500 hover:underline block mx-auto font-semibold cursor-pointer"
+                  >
+                    Reset Alamat Server ke Default
+                  </button>
+                )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Footer Link & QR Buka di Smartphone */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="w-full flex flex-col items-center gap-2.5 mt-1"
+          className="w-full flex flex-col items-center gap-2 mt-1"
         >
           <Link
             to="/cek"
@@ -1038,11 +1278,57 @@ const ScanPage = () => {
             Wali Murid? Cek Kehadiran Di Sini
           </Link>
 
-          <div className="bg-white p-2 rounded-xl shadow-md border border-gray-100 flex items-center gap-3">
-            <QRCodeSVG value={window.location.href} size={44} />
-            <div>
-              <p className="text-[9px] font-black text-gray-600 uppercase tracking-wider leading-none">Buka di Smartphone</p>
-              <p className="text-[8px] font-semibold text-gray-400 mt-1 leading-none">Scan untuk akses cepat</p>
+          {/* Kotak QR Code Buka di Smartphone */}
+          <div className="w-full bg-white p-3 rounded-2xl shadow-md border border-gray-100 space-y-2">
+            <div className="flex items-center justify-between pb-1.5 border-b border-gray-100">
+              <span className="text-[10px] font-black text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Smartphone className="w-3.5 h-3.5 text-pesantren-primary" />
+                Buka & Scan dari HP (Smartphone):
+              </span>
+              
+              {/* Tab Toggle: Wi-Fi vs GitHub Link */}
+              <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setPhoneQrType('wifi')}
+                  className={`text-[9px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    phoneQrType === 'wifi' ? 'bg-white text-pesantren-primary shadow-xs' : 'text-gray-500'
+                  }`}
+                >
+                  📶 Wi-Fi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhoneQrType('github')}
+                  className={`text-[9px] font-bold px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                    phoneQrType === 'github' ? 'bg-white text-pesantren-primary shadow-xs' : 'text-gray-500'
+                  }`}
+                >
+                  🌐 GitHub
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-0.5">
+              <div className="p-1 bg-white border border-gray-200 rounded-xl shrink-0 shadow-2xs">
+                <QRCodeSVG value={currentMobileTarget} size={56} level="M" />
+              </div>
+              <div className="min-w-0 flex-1 text-left">
+                <p className="text-[10px] font-bold text-gray-800 truncate">
+                  {phoneQrType === 'wifi' ? 'Jaringan Wi-Fi Pesantren' : 'Link Web GitHub Pages'}
+                </p>
+                <p className="text-[9px] text-gray-400 font-mono truncate mt-0.5 select-all">
+                  {currentMobileTarget}
+                </p>
+                <a
+                  href={currentMobileTarget}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[9px] text-pesantren-primary font-bold hover:underline mt-1"
+                >
+                  Buka Tautan <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              </div>
             </div>
           </div>
         </motion.div>
