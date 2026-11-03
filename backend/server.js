@@ -641,6 +641,63 @@ app.get('/api/dashboard/attendances', async (req, res) => {
     }
 });
 
+// Endpoint untuk menghapus seluruh data absensi HARI INI (agar siswa bisa dicoba/scan ulang)
+app.delete('/api/dashboard/attendances/today', async (req, res) => {
+    try {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const deletedStudents = await prisma.attendance.deleteMany({
+            where: {
+                timestamp: {
+                    gte: startOfDay
+                }
+            }
+        });
+
+        const deletedTeachers = await prisma.teacherAttendance.deleteMany({
+            where: {
+                timestamp: {
+                    gte: startOfDay
+                }
+            }
+        });
+
+        console.log(`[RESET ABSENSI] ${deletedStudents.count} absensi siswa dan ${deletedTeachers.count} absensi guru hari ini telah dihapus untuk uji coba ulang.`);
+
+        res.json({
+            success: true,
+            message: "Data absensi hari ini berhasil dikosongkan. Siswa dapat melakukan scan ulang untuk uji coba.",
+            deletedStudentsCount: deletedStudents.count,
+            deletedTeachersCount: deletedTeachers.count
+        });
+    } catch (error) {
+        console.error("Gagal menghapus absensi hari ini:", error);
+        res.status(500).json({ error: "Gagal menghapus data absensi hari ini" });
+    }
+});
+
+// Endpoint untuk menghapus satu record absensi berdasarkan ID
+app.delete('/api/dashboard/attendances/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        try {
+            await prisma.attendance.delete({
+                where: { id }
+            });
+            return res.json({ success: true, message: "Data absensi siswa berhasil dihapus" });
+        } catch (err) {
+            await prisma.teacherAttendance.delete({
+                where: { id }
+            });
+            return res.json({ success: true, message: "Data absensi guru berhasil dihapus" });
+        }
+    } catch (error) {
+        console.error("Gagal menghapus record absensi:", error);
+        res.status(500).json({ error: "Gagal menghapus record absensi" });
+    }
+});
+
 // Endpoint data siswa yang belum absen / tidak absen hari ini
 app.get('/api/dashboard/absent-today', async (req, res) => {
     try {

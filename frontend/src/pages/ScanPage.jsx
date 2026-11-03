@@ -99,6 +99,7 @@ const ScanPage = () => {
     setScanResult(null);
     isModalOpenRef.current = false;
     isProcessingRef.current = false;
+    lastScannedCodeRef.current = ''; // Reset kode terakhir agar kartu yang sama bisa langsung dites lagi
   }, []);
 
   // Hitung mundur otomatis menutup hasil scan

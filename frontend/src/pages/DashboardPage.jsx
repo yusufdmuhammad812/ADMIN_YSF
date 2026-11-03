@@ -18,7 +18,9 @@ import {
   AlertCircle,
   Loader2,
   Search,
-  Filter
+  Filter,
+  RotateCcw,
+  Trash2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AdminLayout from '../components/AdminLayout';
@@ -86,6 +88,83 @@ const DashboardPage = () => {
     setCustomIp('http://localhost:3001');
     alert('Alamat IP Server dikembalikan ke default. Halaman akan dimuat ulang.');
     window.location.reload();
+  };
+
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Fungsi untuk mengosongkan/mereset seluruh data absensi hari ini agar siswa bisa uji coba scan lagi
+  const handleResetTodayAttendance = async () => {
+    const confirmReset = window.confirm(
+      "Apakah Anda yakin ingin mengosongkan/mereset seluruh absensi hari ini?\n\nSiswa yang telah absen akan kembali berstatus 'Tidak Absen' dan dapat melakukan scan ulang untuk uji coba."
+    );
+    if (!confirmReset) return;
+
+    setIsResetting(true);
+    try {
+      const baseUrl = getBaseUrl();
+      const res = await fetch(`${baseUrl}/api/dashboard/attendances/today`, {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+
+      // Bersihkan juga cache absensi harian lokal browser
+      const todayStr = new Date().toISOString().slice(0, 10);
+      try {
+        localStorage.removeItem(`absensi_harian_${todayStr}`);
+        localStorage.removeItem(`attendance_${todayStr}`);
+      } catch {}
+
+      if (res.ok) {
+        alert(data.message || "✅ Seluruh data absensi hari ini berhasil dikosongkan! Siswa kini dapat mencoba scan ulang.");
+      } else {
+        alert(data.error || "Gagal mengosongkan data absensi.");
+      }
+      await loadData();
+    } catch (err) {
+      console.error("Gagal reset absensi:", err);
+      // Fallback jika backend offline
+      const todayStr = new Date().toISOString().slice(0, 10);
+      try {
+        localStorage.removeItem(`absensi_harian_${todayStr}`);
+        localStorage.removeItem(`attendance_${todayStr}`);
+      } catch {}
+      alert("✅ Data absensi harian lokal berhasil dibersihkan.");
+      await loadData();
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  // Fungsi untuk menghapus satu record absensi siswa
+  const handleDeleteSingleAttendance = async (item) => {
+    const confirmDelete = window.confirm(
+      `Hapus data absensi untuk "${item.name}"?\n\nSiswa ini akan dapat melakukan scan ulang untuk uji coba.`
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const baseUrl = getBaseUrl();
+      const res = await fetch(`${baseUrl}/api/dashboard/attendances/${item.id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        // Hapus dari cache browser
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayKey = `absensi_harian_${todayStr}`;
+        try {
+          const list = JSON.parse(localStorage.getItem(todayKey) || '[]');
+          const filtered = list.filter((code) => code !== item.nisn && code !== item.qr_code);
+          localStorage.setItem(todayKey, JSON.stringify(filtered));
+        } catch {}
+
+        await loadData();
+      } else {
+        alert("Gagal menghapus absensi");
+      }
+    } catch (err) {
+      console.error("Gagal hapus single record:", err);
+      alert("Gagal menghubungi server untuk menghapus absensi");
+    }
   };
 
   const loadData = useCallback(async () => {
@@ -256,12 +335,25 @@ const DashboardPage = () => {
                 </div>
               </div>
 
-              <button
-                onClick={() => navigate('/admin/reports')}
-                className="text-xs font-bold text-[#1B31BB] hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                Lihat Rekap Lengkap <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleResetTodayAttendance}
+                  disabled={isResetting}
+                  title="Kosongkan seluruh siswa yang sudah absen hari ini agar bisa dicoba kembali"
+                  className="text-xs font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/90 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isResetting ? 'animate-spin' : ''}`} />
+                  <span>{isResetting ? 'Mengosongkan...' : 'Reset Absensi Hari Ini'}</span>
+                </button>
+
+                <button
+                  onClick={() => navigate('/admin/reports')}
+                  className="text-xs font-bold text-[#1B31BB] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  Lihat Rekap Lengkap <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Filter Tabs & Search Bar */}
@@ -335,12 +427,13 @@ const DashboardPage = () => {
                     <th className="pb-3 px-2">NAMA LENGKAP</th>
                     <th className="pb-3 px-2">TIPE</th>
                     <th className="pb-3 px-2">STATUS KEHADIRAN</th>
+                    <th className="pb-3 px-2 text-right">AKSI</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {displayList.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="py-12 text-center text-gray-400 text-xs font-semibold">
+                      <td colSpan="5" className="py-12 text-center text-gray-400 text-xs font-semibold">
                         {statusFilter === 'TIDAK_ABSEN'
                           ? 'Alhamdulillah, semua siswa sudah melakukan absensi hari ini!'
                           : 'Tidak ada data absensi untuk kategori ini'}
@@ -407,6 +500,23 @@ const DashboardPage = () => {
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               <span>TEPAT WAKTU</span>
                             </span>
+                          )}
+                        </td>
+
+                        {/* Kolom Aksi Hapus Satuan */}
+                        <td className="py-3.5 px-2 text-right">
+                          {item.timestamp ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSingleAttendance(item)}
+                              title={`Hapus absensi ${item.name} agar bisa scan ulang`}
+                              className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1 text-[11px] font-semibold"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Hapus</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] text-gray-300 font-medium italic">Belum scan</span>
                           )}
                         </td>
                       </tr>
