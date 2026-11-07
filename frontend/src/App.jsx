@@ -5,7 +5,8 @@ import StudentsPage from './pages/StudentsPage';
 import TeachersPage from './pages/TeachersPage';
 import ReportsPage from './pages/ReportsPage';
 import PrintQRPage from './pages/PrintQRPage';
-import { IdentityPage, SettingsPage, AdminScanPage } from './pages/PlaceholderPages';
+import { IdentityPage, SettingsPage } from './pages/PlaceholderPages';
+import AdminScanPage from './pages/AdminScanPage';
 import LoginPage from './pages/LoginPage';
 import ParentPortalPage from './pages/ParentPortalPage';
 

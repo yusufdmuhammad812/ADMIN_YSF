@@ -35,6 +35,6 @@ export const getBaseUrl = () => {
 
   // 5. Jika diakses dari domain online HTTPS (GitHub Pages):
   // Menghubungkan langsung ke server backend via HTTPS tunnel aman tanpa Mixed Content error
-  const LIVE_HTTPS_BACKEND = 'https://55d41f36a96464.lhr.life';
+  const LIVE_HTTPS_BACKEND = 'https://7c7f26ae88187e.lhr.life';
   return LIVE_HTTPS_BACKEND;
 };

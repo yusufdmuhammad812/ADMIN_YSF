@@ -48,7 +48,7 @@
 }
 
 /* Custom Scanner Styles */
-#reader {
+#reader, #admin-reader {
   border: none !important;
   background-color: #000000 !important;
   overflow: hidden !important;
@@ -56,18 +56,19 @@
   height: 100% !important;
 }
 
-#reader video {
+#reader video, #admin-reader video {
   width: 100% !important;
   height: 100% !important;
   border-radius: 20px !important;
   object-fit: cover !important;
 }
 
-#reader__dashboard, #reader__status_span, #reader img {
+#reader__dashboard, #reader__status_span, #reader img,
+#admin-reader__dashboard, #admin-reader__status_span, #admin-reader img {
   display: none !important;
 }
 
-#reader button {
+#reader button, #admin-reader button {
   background-color: var(--color-pesantren-primary) !important;
   color: white !important;
   padding: 0.5rem 1rem !important;
@@ -80,7 +81,7 @@
   cursor: pointer;
 }
 
-#reader button:hover {
+#reader button:hover, #admin-reader button:hover {
   background-color: var(--color-pesantren-emerald) !important;
 }
 
